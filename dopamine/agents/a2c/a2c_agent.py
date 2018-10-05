@@ -36,7 +36,7 @@ class A2CAgent(object):
         self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net(num_actions)
+        self.net = Net(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
@@ -48,7 +48,7 @@ class A2CAgent(object):
         self.terminal_buffer = []
         
     def _select_action(self, obs):
-        obs = torch.tensor(obs, dtype=torch.float32)
+        obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         logits, value = self.net(obs)
         m = Categorical(logits=logits)
         action = m.sample()
@@ -89,9 +89,9 @@ class A2CAgent(object):
         batch_action = np.asarray(self.action_buffer, dtype=np.int32).swapaxes(0, 1)
         batch_terminal = np.asarray(self.terminal_buffer, dtype=bool).swapaxes(0, 1)
 
-        obs = torch.tensor(obs, dtype=torch.float32)
+        obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         _, last_value = self.net(obs)
-        last_value = last_value.view(-1).detach().numpy()
+        last_value = last_value.view(-1).cpu().detach().numpy()
 
         batch_target_v = []
         for n, (reward, terminal, value) in enumerate(zip(batch_reward, batch_terminal, last_value)):
@@ -101,9 +101,9 @@ class A2CAgent(object):
                 R = r + self.gamma * R * (1 - t)
                 target_v.insert(0, R)
             batch_target_v.append(target_v)
-        batch_target_v = torch.tensor(batch_target_v, dtype=torch.float32).view(-1)
-        batch_action = torch.tensor(batch_action, dtype=torch.float32).view(-1)
-        batch_obs = torch.from_numpy(batch_obs)
+        batch_target_v = torch.tensor(batch_target_v, dtype=torch.float32, device=self.torch_device).view(-1)
+        batch_action = torch.tensor(batch_action, dtype=torch.float32, device=self.torch_device).view(-1)
+        batch_obs = torch.from_numpy(batch_obs).to(self.torch_device)
         
         batch_logits, batch_v = self.net(batch_obs)
         batch_v = batch_v.view(-1)
