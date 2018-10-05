@@ -22,7 +22,7 @@ class Runner(object):
     def __init__(self,
                  create_agent_fn,
                  create_environmen_fn=create_envirtonment,
-                 game_name='CartPole-v1',
+                 game_name='CartPole-v0',
                  num_iterations=100,
                  training_steps=10000,
                  evaluation_steps=5000,
@@ -97,11 +97,7 @@ class Runner(object):
 
             # Perform reward clipping.
             reward = np.clip(reward, -1, 1)
-
-
             action = self.agent.step(reward, observation, is_terminal)
-
-
         return step_number, total_reward
 
     def _run_one_eval_phase(self, min_steps, statistics):
@@ -139,13 +135,9 @@ class Runner(object):
         action = self._initialize_episode()
 
         while step_count < min_steps:
-
             observation, reward, is_terminal = self._run_one_step(action)
-        
             step_count += 4
-
             reward = np.clip(reward, -1, 1)
-
             action = self.agent.step(reward, observation, is_terminal)
 
 
