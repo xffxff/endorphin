@@ -3,19 +3,8 @@ import gym
 import time
 import sys
 import numpy as np
-# from dopamine.atari.preprocessing import AtariPreprocessing
 from stable_baselines.common.vec_env import SubprocVecEnv
 
-
-
-def create_atari_environment(game_name, stick_actions=True):
-    game_version = 'v0' if stick_actions else 'v4'
-    full_game_name = '{}NoFrameskip-{}'.format(game_name, game_version)
-    env = gym.make(full_game_name)
-
-    env = env.env
-    env = AtariPreprocessing(env)
-    return env
 
 def create_multi_environment(env, n_cpu):
     multi_env = SubprocVecEnv([lambda: env for i in range(n_cpu)])
@@ -27,19 +16,20 @@ class Runner(object):
     def __init__(self,
                  create_agent_fn,
                  game_name='CartPole-v0',
-                 stick_actions=True,
+                 n_cpu = 4,
                  num_iters=200,
                  train_steps=10000,
                  eval_steps=5000,
                  max_steps_per_episode=27000):
         self.num_iters = num_iters
+        self.n_cpu = n_cpu
         self.train_steps = train_steps
         self.eval_steps = eval_steps
         self.max_steps_per_episode = max_steps_per_episode
 
         self.eval_env = gym.make(game_name)
         # self.eval_env = create_atari_environment(game_name, stick_actions)
-        self.train_env = create_multi_environment(self.eval_env, 4)
+        self.train_env = create_multi_environment(self.eval_env, n_cpu)
         self.env = self.train_env
 
         self.agent = create_agent_fn(self.env)
@@ -107,7 +97,6 @@ class Runner(object):
         del self.agent.obs_buffer[:]
         del self.agent.action_buffer[:]
         del self.agent.reward_buffer[:]
-        # del self.agent.value_buffer[:]
         del self.agent.terminal_buffer[:]
 
         step_count = 0
@@ -116,8 +105,7 @@ class Runner(object):
 
         while step_count < min_steps:
             observation, reward, terminal = self._run_one_step(action)
-            step_count += 4
-            # print(step_count)
+            step_count += self.n_cpu
             reward = np.clip(reward, -1, 1)
             action = self.agent.step(reward, observation, terminal)
 
@@ -127,7 +115,7 @@ class Runner(object):
         start_time = time.time()
         self._run_one_train_phase(self.train_steps)
         time_delta = time.time() - start_time
-        print('One training phase cost: ', time_delta)
+        print('One training phase cost: ', time_delta, ' s')
 
     def _run_one_iteration(self, iteration):
         print('Starting iteration ', iteration)

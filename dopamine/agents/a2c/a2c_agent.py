@@ -7,10 +7,10 @@ from torch.distributions import Categorical
 
 class Net(nn.Module):
 
-    def __init__(self):
+    def __init__(self, num_actions):
         super().__init__()
         self.fc = nn.Linear(4, 128)
-        self.logits = nn.Linear(128, 2)
+        self.logits = nn.Linear(128, num_actions)
         self.value = nn.Linear(128, 1)
 
     def forward(self, x):
@@ -25,18 +25,23 @@ class A2CAgent(object):
     def __init__(self,
                  num_actions, 
                  gamma=0.99,
+                 train_period=5, 
+                 v_loss_coef=0.25,
+                 entropy_coef=0.01,
                  torch_device='cpu'):
         self.num_actions = num_actions
         self.gamma = gamma
+        self.train_period = train_period
+        self.v_loss_coef = v_loss_coef
+        self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net()
+        self.net = Net(num_actions)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
 
         self.step_num = 0
-        # self.log_prob_for_action = []
         self.obs_buffer = []
         self.action_buffer = []
         self.reward_buffer = []
@@ -65,7 +70,7 @@ class A2CAgent(object):
 
         self.step_num += 1
 
-        if self.step_num % 5 == 0:
+        if self.step_num % self.train_period == 0:
             if not self.eval_mode:
                 self._train_step(obs)
             del self.obs_buffer[:]
@@ -79,10 +84,9 @@ class A2CAgent(object):
         return action
     
     def _train_step(self, obs):
-        batch_obs = np.asarray(self.obs_buffer).swapaxes(0, 1).reshape(-1, 4)
+        batch_obs = np.asarray(self.obs_buffer, dtype=np.float32).swapaxes(0, 1).reshape(-1, 4)
         batch_reward = np.asarray(self.reward_buffer, dtype=np.float32).swapaxes(0, 1)
         batch_action = np.asarray(self.action_buffer, dtype=np.int32).swapaxes(0, 1)
-        # batch_value = np.asarray(self.value_buffer, dtype=np.float32).swapaxes(0, 1)
         batch_terminal = np.asarray(self.terminal_buffer, dtype=bool).swapaxes(0, 1)
 
         obs = torch.tensor(obs, dtype=torch.float32)
@@ -99,7 +103,7 @@ class A2CAgent(object):
             batch_target_v.append(target_v)
         batch_target_v = torch.tensor(batch_target_v, dtype=torch.float32).view(-1)
         batch_action = torch.tensor(batch_action, dtype=torch.float32).view(-1)
-        batch_obs = torch.tensor(batch_obs, dtype=torch.float32)
+        batch_obs = torch.from_numpy(batch_obs)
         
         batch_logits, batch_v = self.net(batch_obs)
         batch_v = batch_v.view(-1)
@@ -107,12 +111,12 @@ class A2CAgent(object):
         batch_advantage = batch_target_v - batch_v
 
         m = Categorical(logits=batch_logits)
-        self.entopy = torch.mean(m.entropy())
+        entopy = torch.mean(m.entropy())
         log_probs = m.log_prob(batch_action)
-        self.pg_loss = - torch.mean(log_probs * batch_advantage.detach())
-        self.v_loss = torch.mean(torch.pow((batch_target_v.detach() - batch_v), 2))
+        pg_loss = - torch.mean(log_probs * batch_advantage.detach())
+        v_loss = torch.mean(torch.pow((batch_target_v.detach() - batch_v), 2))
 
-        loss = self.pg_loss + 0.25 * self.v_loss - 0.01 * self.entopy
+        loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entopy
 
         self.optimizer.zero_grad()
         loss.backward()
