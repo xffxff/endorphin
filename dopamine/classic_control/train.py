@@ -19,15 +19,16 @@ from dopamine.agents.a2c import a2c_agent
 def create_agent(environment):
     return a2c_agent.A2CAgent(environment.action_space.n)
 
-def create_runner(create_agent_fn):
-    return run_experiment.Runner(create_agent_fn)
+def create_runner(create_agent_fn, base_dir):
+    return run_experiment.Runner(create_agent_fn, base_dir)
 
-def launch_experiment(create_runner_fn, create_agent_fn):
-    runner = create_runner_fn(create_agent_fn)
+def launch_experiment(create_runner_fn, create_agent_fn, base_dir):
+    runner = create_runner_fn(create_agent_fn, base_dir)
     runner.run_experiment()
 
 def main(unused_argv):
-    launch_experiment(create_runner, create_agent)
+    base_dir = '/tmp/dopamine/a2c'
+    launch_experiment(create_runner, create_agent, base_dir)
 
 if __name__ == '__main__':
     app.run(main)

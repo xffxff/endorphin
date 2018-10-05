@@ -1,8 +1,11 @@
 
+import os
 import gym
 import time
 import sys
 import numpy as np
+from dopamine.common import iteration_statistics
+from dopamine.common import logger
 from stable_baselines.common.vec_env import SubprocVecEnv
 
 
@@ -15,24 +18,33 @@ class Runner(object):
 
     def __init__(self,
                  create_agent_fn,
+                 base_dir,
                  game_name='CartPole-v0',
                  n_cpu = 4,
                  num_iters=200,
                  train_steps=10000,
                  eval_steps=5000,
+                 log_every_n=1,
+                 log_file_prefix='log',
                  max_steps_per_episode=27000):
+        self.base_dir = base_dir
         self.num_iters = num_iters
         self.n_cpu = n_cpu
         self.train_steps = train_steps
         self.eval_steps = eval_steps
+        self.log_every_n = log_every_n
+        self.log_file_prefix = log_file_prefix
         self.max_steps_per_episode = max_steps_per_episode
 
         self.eval_env = gym.make(game_name)
-        # self.eval_env = create_atari_environment(game_name, stick_actions)
         self.train_env = create_multi_environment(self.eval_env, n_cpu)
         self.env = self.train_env
 
         self.agent = create_agent_fn(self.env)
+        self._create_directories()  
+
+    def _create_directories(self):
+        self.logger = logger.Logger(os.path.join(self.base_dir, 'logs'))
 
     def _initialize_episode(self):
         initial_observation = self.env.reset()
@@ -62,7 +74,7 @@ class Runner(object):
 
         return step_num, total_reward
 
-    def _run_one_eval_phase(self, min_steps):
+    def _run_one_eval_phase(self, min_steps, statistics):
         step_count = 0
         num_episodes = 0
         sum_returns = 0. 
@@ -70,6 +82,10 @@ class Runner(object):
         while step_count < min_steps:
             episode_length, episode_return = self._run_one_episode()
 
+            statistics.append({
+                '{}_episode_lengths'.format('eval'): episode_length,
+                '{}_episode_returns'.format('eval'): episode_return
+            })
             step_count += episode_length
             sum_returns += episode_return
             num_episodes += 1
@@ -81,17 +97,16 @@ class Runner(object):
 
         return step_count, sum_returns, num_episodes
 
-    def _run_eval_phase(self):
+    def _run_eval_phase(self, statistics):
         self.env = self.eval_env
         self.agent.eval_mode = True
         _, sum_returns, num_episodes = self._run_one_eval_phase(
-            self.eval_steps)
+            self.eval_steps, statistics)
         average_return = sum_returns / num_episodes if num_episodes > 0 else 0.0
 
         print('Average undiscounted return per evaluation episode: ', 
               average_return)
-        
-        return num_episodes, average_return
+        statistics.append({'eval_average_return': average_return})
 
     def _run_one_train_phase(self, min_steps):
         del self.agent.obs_buffer[:]
@@ -118,11 +133,19 @@ class Runner(object):
         print('One training phase cost: ', time_delta, ' s')
 
     def _run_one_iteration(self, iteration):
+        statistics = iteration_statistics.IterationStatistics()
         print('Starting iteration ', iteration)
         self._run_train_phase()
-        num_episodes_eval, average_reward_eval = self._run_eval_phase()
+        self._run_eval_phase(statistics)
+        return statistics.data_lists
+
+    def _log_experiment(self, iteration, statistics):
+        self.logger['iteration_{:d}'.format(iteration)] = statistics
+        if iteration % self.log_every_n == 0:
+            self.logger.log_to_file(self.log_file_prefix, iteration)
 
     def run_experiment(self):
         print('Beginning training...')
         for iteration in range(self.num_iters):
-            self._run_one_iteration(iteration)
+            statistics = self._run_one_iteration(iteration)
+            self._log_experiment(iteration, statistics)

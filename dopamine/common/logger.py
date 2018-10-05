@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import os
 import pickle
-import tensorflow as tf
 
 
 CHECKPOINT_DURATION = 4
@@ -39,19 +38,20 @@ class Logger(object):
     self._logging_enabled = True
 
     if not logging_dir:
-      tf.logging.info('Logging directory not specified, will not log.')
+      print('Logging directory not specified, will not log.')
       self._logging_enabled = False
       return
     # Try to create logging directory.
-    try:
-      tf.gfile.MakeDirs(logging_dir)
-    except tf.errors.PermissionDeniedError:
-      # If it already exists, ignore exception.
-      pass
-    if not tf.gfile.Exists(logging_dir):
-      tf.logging.warning(
-          'Could not create directory %s, logging will be disabled.',
-          logging_dir)
+    # try:
+    #   os.makedirs(logging_dir)
+    # except tf.errors.PermissionDeniedError:
+    #   # If it already exists, ignore exception.
+    #   pass
+    if not os.path.exists(logging_dir):
+      os.makedirs(logging_dir)
+    if not os.path.exists(logging_dir):
+      print(
+          'Could not create directory {}, logging will be disabled.'.format(logging_dir))
       self._logging_enabled = False
       return
     self._logging_dir = logging_dir
@@ -82,10 +82,10 @@ class Logger(object):
         filename_prefix.
     """
     if not self._logging_enabled:
-      tf.logging.warning('Logging is disabled.')
+      print('Logging is disabled.')
       return
     log_file = self._generate_filename(filename_prefix, iteration_number)
-    with tf.gfile.GFile(log_file, 'w') as fout:
+    with open(log_file, 'wb') as fout:
       pickle.dump(self.data, fout, protocol=pickle.HIGHEST_PROTOCOL)
     # After writing a checkpoint file, we garbage collect the log file
     # that is CHECKPOINT_DURATION versions old.
@@ -94,8 +94,8 @@ class Logger(object):
       stale_file = self._generate_filename(filename_prefix,
                                            stale_iteration_number)
       try:
-        tf.gfile.Remove(stale_file)
-      except tf.errors.NotFoundError:
+        os.remove(stale_file)
+      except:
         # Ignore if file not found.
         pass
 
