@@ -1,4 +1,5 @@
 
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -121,6 +122,21 @@ class A2CAgent(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+    def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
+        if not os.path.exists(checkpoint_dir):
+            return None
+        
+
+        torch.save(self.net.state_dict(), os.path.join(checkpoint_dir, 'tf_ckpt-{}'.format(iteration_number)))
+
+        bundle_dict = {}
+        return bundle_dict
+    
+    def unbundle(self, checkpoint_dir, iteration_number, bundle_dict):
+
+        self.net.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'tf_ckpt-{}'.format(iteration_number))))
+        return True
 
 
         

@@ -6,6 +6,7 @@ import sys
 import numpy as np
 from dopamine.common import iteration_statistics
 from dopamine.common import logger
+from dopamine.common import checkpointer
 from stable_baselines.common.vec_env import SubprocVecEnv
 
 
@@ -26,6 +27,7 @@ class Runner(object):
                  eval_steps=5000,
                  log_every_n=1,
                  log_file_prefix='log',
+                 checkpoint_file_prefix='ckpt',
                  max_steps_per_episode=27000):
         self.base_dir = base_dir
         self.num_iters = num_iters
@@ -42,9 +44,26 @@ class Runner(object):
 
         self.agent = create_agent_fn(self.env)
         self._create_directories()  
+        self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
 
     def _create_directories(self):
+        self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
         self.logger = logger.Logger(os.path.join(self.base_dir, 'logs'))
+
+    def _initialize_checkpointer_and_maybe_resume(self, checkpoint_file_prefix):
+        self.checkpointer = checkpointer.Checkpointer(self.checkpoint_dir, checkpoint_file_prefix)
+        self.start_iteration = 0
+
+        latest_checkpoint_version = checkpointer.get_latest_checkpoint_number(self.checkpoint_dir)
+        if latest_checkpoint_version >= 0:
+            experiment_data = self.checkpointer.load_checkpoint(latest_checkpoint_version)
+            if self.agent.unbundle(
+                self.checkpoint_dir, latest_checkpoint_version, experiment_data):
+                assert 'logs' in experiment_data
+                assert 'current_iteration' in experiment_data
+                self.logger.data = experiment_data['logs']
+                self.start_iteration = experiment_data['current_iteration'] + 1
+                print('Reloaded checkpoint and will start from iteration ', self.start_iteration)
 
     def _initialize_episode(self):
         initial_observation = self.env.reset()
@@ -144,8 +163,17 @@ class Runner(object):
         if iteration % self.log_every_n == 0:
             self.logger.log_to_file(self.log_file_prefix, iteration)
 
+    def _checkpoint_experiment(self, iteration):
+        experiment_data = self.agent.bundle_and_checkpoint(self.checkpoint_dir, iteration)
+        
+        # if experiment_data:
+        experiment_data['current_iteration'] = iteration
+        experiment_data['logs'] = self.logger.data
+        self.checkpointer.save_checkpoint(iteration, experiment_data)
+
     def run_experiment(self):
         print('Beginning training...')
         for iteration in range(self.num_iters):
             statistics = self._run_one_iteration(iteration)
             self._log_experiment(iteration, statistics)
+            self._checkpoint_experiment(iteration)
