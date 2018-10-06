@@ -1,5 +1,6 @@
 
 import os
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -10,11 +11,21 @@ class Net(nn.Module):
 
     def __init__(self, num_actions):
         super().__init__()
-        self.fc = nn.Linear(4, 128)
-        self.logits = nn.Linear(128, num_actions)
-        self.value = nn.Linear(128, 1)
+        self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(64, 256)
+        self.logits = nn.Linear(256, num_actions)
+        self.value = nn.Linear(256, 1)
 
     def forward(self, x):
+        x = x / 255.
+        x = torch.relu(self.conv1(x))
+        x = torch.relu(self.conv2(x))
+        x = torch.relu(self.conv3(x))
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
         x = torch.relu(self.fc(x))
         logits = self.logits(x)
         value = self.value(x)
@@ -29,7 +40,7 @@ class A2CAgent(object):
                  train_period=5, 
                  v_loss_coef=0.25,
                  entropy_coef=0.01,
-                 torch_device='cpu'):
+                 torch_device='cuda'):
         self.num_actions = num_actions
         self.gamma = gamma
         self.train_period = train_period
@@ -85,7 +96,7 @@ class A2CAgent(object):
         return action
     
     def _train_step(self, obs):
-        batch_obs = np.asarray(self.obs_buffer, dtype=np.float32).swapaxes(0, 1).reshape(-1, 4)
+        batch_obs = np.asarray(self.obs_buffer, dtype=np.float32).swapaxes(0, 1).reshape(-1, 4, 84, 84)
         batch_reward = np.asarray(self.reward_buffer, dtype=np.float32).swapaxes(0, 1)
         batch_action = np.asarray(self.action_buffer, dtype=np.int32).swapaxes(0, 1)
         batch_terminal = np.asarray(self.terminal_buffer, dtype=bool).swapaxes(0, 1)
@@ -112,12 +123,18 @@ class A2CAgent(object):
         batch_advantage = batch_target_v - batch_v
 
         m = Categorical(logits=batch_logits)
-        entopy = torch.mean(m.entropy())
+        entropy = torch.mean(m.entropy())
         log_probs = m.log_prob(batch_action)
         pg_loss = - torch.mean(log_probs * batch_advantage.detach())
         v_loss = torch.mean(torch.pow((batch_target_v.detach() - batch_v), 2))
 
-        self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entopy
+        self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
+
+        sys.stdout.write('entropy: {} '.format(entropy) + 
+                         'pg_loss: {} '.format(pg_loss) +
+                         'v_loss: {} '.format(v_loss) + 
+                         'total_loss: {}\r'.format(self.loss))
+        sys.stdout.flush()
 
         self.optimizer.zero_grad()
         self.loss.backward()
