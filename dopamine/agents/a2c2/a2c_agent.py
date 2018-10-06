@@ -40,7 +40,7 @@ class A2CAgent(object):
                  train_period=5, 
                  v_loss_coef=0.25,
                  entropy_coef=0.01,
-                 torch_device='cuda'):
+                 torch_device='cpu'):
         self.num_actions = num_actions
         self.gamma = gamma
         self.train_period = train_period
@@ -64,10 +64,10 @@ class A2CAgent(object):
         logits, value = self.net(obs)
         m = Categorical(logits=logits)
         action = m.sample()
-        if self.eval_mode:
-            action = action.item()
-        else:
-            action = action.tolist()
+        # if self.eval_mode:
+            # action = action.item()
+        # else:
+        action = action.tolist()
         return action
     
     def begin_episode(self, obs):
