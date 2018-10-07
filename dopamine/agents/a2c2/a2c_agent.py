@@ -40,7 +40,7 @@ class A2CAgent(object):
                  train_period=5, 
                  v_loss_coef=0.25,
                  entropy_coef=0.01,
-                 torch_device='cpu'):
+                 torch_device='cuda'):
         self.num_actions = num_actions
         self.gamma = gamma
         self.train_period = train_period
