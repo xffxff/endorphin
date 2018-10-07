@@ -26,6 +26,7 @@ from __future__ import print_function
 from gym.spaces.box import Box
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 
 class AtariPreprocessing(object):
@@ -77,6 +78,7 @@ class AtariPreprocessing(object):
         np.empty((obs_dims.shape[0], obs_dims.shape[1]), dtype=np.uint8),
         np.empty((obs_dims.shape[0], obs_dims.shape[1]), dtype=np.uint8)
     ]
+    
 
     self.game_over = False
     self.lives = 0  # Will need to be set by reset().
@@ -85,7 +87,7 @@ class AtariPreprocessing(object):
   def observation_space(self):
     # Return the observation space adjusted to match the shape of the processed
     # observations.
-    return Box(low=0, high=255, shape=(self.screen_size, self.screen_size, 1),
+    return Box(low=0, high=255, shape=(1, self.screen_size, self.screen_size),
                dtype=np.uint8)
 
   @property
@@ -211,4 +213,46 @@ class AtariPreprocessing(object):
                                    (self.screen_size, self.screen_size),
                                    interpolation=cv2.INTER_AREA)
     int_image = np.asarray(transformed_image, dtype=np.uint8)
-    return np.expand_dims(int_image, axis=2)
+    return np.expand_dims(int_image, axis=0)
+
+  
+class FrameStackPreprocessing(object):
+
+  def __init__(self, environment, frame_stack=4):
+    self.environment = environment
+    self.frame_stack = frame_stack
+    
+    self.obs_space = self.environment.observation_space.shape
+    self.state = np.zeros((frame_stack, self.obs_space[1], self.obs_space[2]))
+
+  @property
+  def observation_space(self):
+    # Return the observation space adjusted to match the shape of the processed
+    # observations.
+    return Box(low=0, high=255, shape=(self.frame_stack, self.obs_space[1], self.obs_space[2]),
+               dtype=np.uint8)
+
+  @property
+  def action_space(self):
+    return self.environment.action_space
+
+  @property
+  def reward_range(self):
+    return self.environment.reward_range
+
+  @property
+  def metadata(self):
+    return self.environment.metadata
+
+  def reset(self):
+    observation = self.environment.reset()
+    self.state[-1] = observation
+    return self.state
+  
+  def step(self, action):
+    observation, reward, game_over, info = self.environment.step(action)
+
+    self.state = np.roll(self.state, shift=-1, axis=0)
+    self.state[-1] = observation
+
+    return self.state, reward, game_over, info  
