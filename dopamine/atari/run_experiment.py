@@ -45,7 +45,7 @@ class Runner(object):
                  sticky_actions=True,
                  n_cpu = 24,
                  num_iters=200,
-                 train_steps=250000,
+                 train_steps=2550000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',

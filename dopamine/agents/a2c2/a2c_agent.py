@@ -60,6 +60,8 @@ class A2CAgent(object):
         self.terminal_buffer = []
         
     def _select_action(self, obs):
+        if self.eval_mode:
+            obs = obs[None, :]
         obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         logits, value = self.net(obs)
         m = Categorical(logits=logits)
