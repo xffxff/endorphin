@@ -27,7 +27,7 @@ def launch_experiment(create_runner_fn, create_agent_fn, base_dir):
     runner.run_experiment()
 
 def main(unused_argv):
-    base_dir = '/tmp/dopamine/a2c2'
+    base_dir = '/tmp/dopamine/a2c/SpaceInvaders'
     launch_experiment(create_runner, create_agent, base_dir)
 
 if __name__ == '__main__':

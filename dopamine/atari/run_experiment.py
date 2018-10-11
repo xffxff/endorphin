@@ -16,17 +16,17 @@ from dopamine.common import checkpointer, iteration_statistics, logger
 def create_atari_environment(game_name, sticky_actions=True, n_cpu=1):
     game_version = 'v0' if sticky_actions else 'v4'
     full_game_name = '{}NoFrameskip-{}'.format(game_name, game_version)
-    # env = gym.make(full_game_name)
+    env = gym.make(full_game_name)
     # Strip out the TimeLimit wrapper from Gym, which caps us at 100k frames. We
     # handle this time limit internally instead, which lets us cap at 108k frames
     # (30 minutes). The TimeLimit wrapper also plays poorly with saving and
     # restoring states.
-    # env = env.env
-    # env = preprocessing.AtariPreprocessing(env)
-    # env = preprocessing.FrameStackPreprocessing(env)
+    env = env.env
+    env = preprocessing.AtariPreprocessing(env)
+    env = preprocessing.FrameStackPreprocessing(env)
 
-    env = make_atari_env(full_game_name, n_cpu, seed=123)
-    env = VecFrameStack(env, 4)
+    # env = make_atari_env(full_game_name, n_cpu, seed=123)
+    # env = VecFrameStack(env, 4)
 
     return env
 
@@ -43,7 +43,7 @@ class Runner(object):
                  base_dir,
                  game_name='SpaceInvaders',
                  sticky_actions=True,
-                 n_cpu = 32,
+                 n_cpu = 24,
                  num_iters=200,
                  train_steps=250000,
                  eval_steps=10000,
@@ -60,11 +60,11 @@ class Runner(object):
         self.log_file_prefix = log_file_prefix
         self.max_steps_per_episode = max_steps_per_episode
 
-        self.eval_env = create_atari_environment(game_name, sticky_actions=sticky_actions, n_cpu=1)
-        self.train_env = create_atari_environment(game_name, sticky_actions=sticky_actions, n_cpu=n_cpu)
+        # self.eval_env = create_atari_environment(game_name, sticky_actions=sticky_actions, n_cpu=1)
+        # self.train_env = create_atari_environment(game_name, sticky_actions=sticky_actions, n_cpu=n_cpu)
 
-        # self.eval_env = create_atari_environment(game_name, sticky_actions=sticky_actions)
-        # self.train_env = create_multi_environment(self.eval_env, n_cpu)
+        self.eval_env = create_atari_environment(game_name, sticky_actions=sticky_actions)
+        self.train_env = create_multi_environment(self.eval_env, n_cpu)
         self.env = self.train_env
 
         self.agent = create_agent_fn(self.env)
@@ -92,12 +92,12 @@ class Runner(object):
 
     def _initialize_episode(self):
         initial_observation = self.env.reset()
-        initial_observation = np.transpose(initial_observation, (0, 3, 1, 2))
+        # initial_observation = np.transpose(initial_observation, (0, 3, 1, 2))
         return self.agent.begin_episode(initial_observation)
 
     def _run_one_step(self, action):
         observation, reward, is_terminal, _ = self.env.step(action)
-        observation = np.transpose(observation, (0, 3, 1, 2))
+        # observation = np.transpose(observation, (0, 3, 1, 2))
         return observation, reward, is_terminal
 
     def _run_one_episode(self):
@@ -175,7 +175,7 @@ class Runner(object):
         start_time = time.time()
         self._run_one_train_phase(self.train_steps)
         time_delta = time.time() - start_time
-        print(f'\nsOne training phase cost: {time_delta}s')
+        print(f'\nOne training phase cost: {time_delta}s')
 
     def _run_one_iteration(self, iteration):
         statistics = iteration_statistics.IterationStatistics()
