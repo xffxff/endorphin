@@ -3,7 +3,7 @@ from absl import app
 from absl import flags
 
 from dopamine.atari import run_experiment
-from dopamine.agents.a2c2 import a2c_agent
+from dopamine.agents.atari.a2c import a2c_agent
 
 # flags.DEFINE_string('agent_name', None, 'Name of the agent')
 # # flags.DEFINE_string('base_dir', None, 'Base directory to host all required sub-directories')

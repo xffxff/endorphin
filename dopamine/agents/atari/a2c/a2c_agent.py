@@ -69,9 +69,6 @@ class A2CAgent(object):
         logits, value = self.net(obs)
         m = Categorical(logits=logits)
         action = m.sample()
-        # if self.eval_mode:
-            # action = action.item()
-        # else:
         action = action.tolist()
         return action
     
@@ -156,7 +153,6 @@ class A2CAgent(object):
         return bundle_dict
     
     def unbundle(self, checkpoint_dir, iteration_number, bundle_dict):
-
 
         for key in self.__dict__:
             if key in bundle_dict:
