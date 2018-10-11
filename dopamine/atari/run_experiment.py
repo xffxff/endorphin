@@ -43,7 +43,7 @@ class Runner(object):
                  base_dir,
                  game_name='Pong',
                  sticky_actions=True,
-                 n_cpu = 24,
+                 n_cpu = 4,
                  num_iters=200,
                  train_steps=2550000,
                  eval_steps=10000,
