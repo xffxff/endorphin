@@ -147,7 +147,8 @@ class A2CAgent(object):
         if not os.path.exists(checkpoint_dir):
             return None
         
-        torch.save(self.net.state_dict(), os.path.join(checkpoint_dir, 'torch_ckpt-{}'.format(iteration_number)))
+        torch.save(self.net.state_dict(), os.path.join(checkpoint_dir, 'net_ckpt-{}'.format(iteration_number)))
+        torch.save(self.optimizer.state_dict(), os.path.join(checkpoint_dir, 'opt_ckpt-{}'.format(iteration_number)))
 
         bundle_dict = {}
         return bundle_dict
@@ -158,7 +159,8 @@ class A2CAgent(object):
             if key in bundle_dict:
                 self.__dict__[key] = bundle_dict[key]
 
-        self.net.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'torch_ckpt-{}'.format(iteration_number))))
+        self.net.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'net_ckpt-{}'.format(iteration_number))))
+        self.optimizer.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'opt_ckpt-{}'.format(iteration_number))))
         return True
 
 

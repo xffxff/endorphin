@@ -44,7 +44,7 @@ class Runner(object):
                  sticky_actions=True,
                  n_cpu = 4,
                  num_iters=200,
-                 train_steps=10000,
+                 train_steps=1000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',
@@ -159,7 +159,6 @@ class Runner(object):
         del self.agent.terminal_buffer[:]
 
         step_count = 0
-
         action = self._initialize_episode()
 
         while step_count < min_steps:
