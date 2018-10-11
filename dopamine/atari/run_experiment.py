@@ -41,11 +41,11 @@ class Runner(object):
     def __init__(self,
                  create_agent_fn,
                  base_dir,
-                 game_name='Pong',
+                 game_name='SpaceInvaders',
                  sticky_actions=True,
-                 n_cpu = 4,
+                 n_cpu = 32,
                  num_iters=200,
-                 train_steps=2550000,
+                 train_steps=250000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',
@@ -202,5 +202,5 @@ class Runner(object):
         print('Beginning training...')
         for iteration in range(self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            # self._log_experiment(iteration, statistics)
-            # self._checkpoint_experiment(iteration)
+            self._log_experiment(iteration, statistics)
+            self._checkpoint_experiment(iteration)

@@ -49,6 +49,9 @@ class A2CAgent(object):
         self.torch_device = torch_device
 
         self.net = Net(num_actions).to(self.torch_device)
+        # self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
+        #                                      lr=0.00075,
+        #                                      weight_decay=0.99)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
@@ -132,11 +135,12 @@ class A2CAgent(object):
 
         self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-        sys.stdout.write('entropy: {} '.format(entropy) + 
-                         'pg_loss: {} '.format(pg_loss) +
-                         'v_loss: {} '.format(v_loss) + 
-                         'total_loss: {}\r'.format(self.loss))
-        sys.stdout.flush()
+        if self.step_num % 1000 == 0:
+            sys.stdout.write('entropy: {} '.format(entropy) + 
+                            'pg_loss: {} '.format(pg_loss) +
+                            'v_loss: {} '.format(v_loss) + 
+                            'total_loss: {}\r'.format(self.loss))
+            sys.stdout.flush()
 
         self.optimizer.zero_grad()
         self.loss.backward()
