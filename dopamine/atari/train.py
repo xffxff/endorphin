@@ -5,30 +5,31 @@ from absl import flags
 from dopamine.atari import run_experiment
 from dopamine.agents.atari.a2c import a2c_agent
 
-# flags.DEFINE_string('agent_name', None, 'Name of the agent')
-# # flags.DEFINE_string('base_dir', None, 'Base directory to host all required sub-directories')
+flags.DEFINE_string('agent_name', 'a2c', 'Name of the agent')
+flags.DEFINE_string('base_dir', '/tmp/dopamine/a2c/Pong', 'Base directory to host all required sub-directories')
+flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 # flags.DEFINE_string(
-#     'schedule', 'continuous_train',
+#     'schedule', 'continuous_train_and_eval',
 #     'The schedule with which to run the experiment and choose an appropriate '
 #     'Runner. Supported choices are '
 #     '{continuous_train, continuous_train_and_eval}.')
 
-# FLAGS = flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 def create_agent(environment):
-    return a2c_agent.A2CAgent(environment.action_space.n)
+    if FLAGS.agent_name == 'a2c':
+        return a2c_agent.A2CAgent(environment.action_space.n)
 
-def create_runner(create_agent_fn, base_dir):
-    return run_experiment.Runner(create_agent_fn, base_dir)
+def create_runner(create_agent_fn):
+    return run_experiment.Runner(create_agent_fn, FLAGS.base_dir, game_name=FLAGS.game_name)
 
-def launch_experiment(create_runner_fn, create_agent_fn, base_dir):
-    runner = create_runner_fn(create_agent_fn, base_dir)
+def launch_experiment(create_runner_fn, create_agent_fn):
+    runner = create_runner_fn(create_agent_fn)
     runner.run_experiment()
 
 def main(unused_argv):
-    base_dir = '/tmp/dopamine/a2c/SpaceInvaders'
-    launch_experiment(create_runner, create_agent, base_dir)
+    launch_experiment(create_runner, create_agent)
 
 if __name__ == '__main__':
     app.run(main)

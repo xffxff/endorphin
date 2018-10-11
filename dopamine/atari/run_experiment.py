@@ -35,17 +35,16 @@ def create_multi_environment(env, n_cpu):
     return multi_env
 
 
-
 class Runner(object):
 
     def __init__(self,
                  create_agent_fn,
                  base_dir,
-                 game_name='SpaceInvaders',
+                 game_name='Breakout',
                  sticky_actions=True,
-                 n_cpu = 24,
+                 n_cpu = 4,
                  num_iters=200,
-                 train_steps=250000,
+                 train_steps=10000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',
@@ -192,7 +191,6 @@ class Runner(object):
     def _checkpoint_experiment(self, iteration):
         experiment_data = self.agent.bundle_and_checkpoint(self.checkpoint_dir, iteration)
         
-        # if experiment_data:
         experiment_data['current_iteration'] = iteration
         experiment_data['logs'] = self.logger.data
         self.checkpointer.save_checkpoint(iteration, experiment_data)
