@@ -138,7 +138,7 @@ class A2CAgent(object):
 
         self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-        if self.step_num % 1 == 0:
+        if self.step_num % 100 == 0:
             sys.stdout.write('entropy: {} '.format(entropy) + 
                             'pg_loss: {} '.format(pg_loss) +
                             'v_loss: {} '.format(v_loss) + 

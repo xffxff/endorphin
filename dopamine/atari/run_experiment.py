@@ -42,7 +42,7 @@ class Runner(object):
                  base_dir,
                  game_name='Breakout',
                  sticky_actions=True,
-                 n_cpu = 4,
+                 n_cpu = 32,
                  num_iters=200,
                  train_steps=250000,
                  eval_steps=10000,
