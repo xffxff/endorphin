@@ -14,17 +14,15 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
-        self.pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(64, 256)
-        self.logits = nn.Linear(256, num_actions)
-        self.value = nn.Linear(256, 1)
+        self.fc = nn.Linear(3136, 512)
+        self.logits = nn.Linear(512, num_actions)
+        self.value = nn.Linear(512, 1)
 
     def forward(self, x):
         x = x / 255.
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
         x = torch.relu(self.conv3(x))
-        x = self.pool(x)
         x = x.view(x.size(0), -1)
         x = torch.relu(self.fc(x))
         logits = self.logits(x)
@@ -49,10 +47,10 @@ class A2CAgent(object):
         self.torch_device = torch_device
 
         self.net = Net(num_actions).to(self.torch_device)
-        # self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
-        #                                      lr=0.00075,
-        #                                      weight_decay=0.99)
-        self.optimizer = torch.optim.Adam(self.net.parameters())
+        self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
+                                             lr=0.00075,
+                                             weight_decay=0.99)
+        # self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
 
@@ -132,7 +130,7 @@ class A2CAgent(object):
 
         self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-        if self.step_num % 1000 == 0:
+        if self.step_num % 1 == 0:
             sys.stdout.write('entropy: {} '.format(entropy) + 
                             'pg_loss: {} '.format(pg_loss) +
                             'v_loss: {} '.format(v_loss) + 

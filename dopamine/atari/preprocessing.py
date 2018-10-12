@@ -256,3 +256,6 @@ class FrameStackPreprocessing(object):
     self.state[-1] = observation
 
     return self.state, reward, game_over, info  
+  
+  def render(self, mode):
+    self.environment.render(mode)

@@ -42,9 +42,9 @@ class Runner(object):
                  base_dir,
                  game_name='Breakout',
                  sticky_actions=True,
-                 n_cpu = 4,
+                 n_cpu = 32,
                  num_iters=200,
-                 train_steps=1000,
+                 train_steps=250000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',
@@ -107,6 +107,7 @@ class Runner(object):
         is_terminal = False
 
         while True:
+            # self.env.render('human')
             observation, reward, is_terminal = self._run_one_step(action)
             total_reward += reward
             step_num += 1
@@ -198,5 +199,5 @@ class Runner(object):
         print('Beginning training...')
         for iteration in range(self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            self._log_experiment(iteration, statistics)
-            self._checkpoint_experiment(iteration)
+            # self._log_experiment(iteration, statistics)
+            # self._checkpoint_experiment(iteration)
