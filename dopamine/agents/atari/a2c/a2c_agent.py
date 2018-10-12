@@ -12,17 +12,17 @@ class Net(nn.Module):
     def __init__(self, num_actions):
         super().__init__()
         self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
-        nn.init.xavier_normal_(self.conv1.weight)
+        nn.init.orthogonal_(self.conv1.weight)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
-        nn.init.xavier_normal_(self.conv2.weight)
+        nn.init.orthogonal_(self.conv2.weight)
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
-        nn.init.xavier_normal_(self.conv3.weight)
+        nn.init.orthogonal_(self.conv3.weight)
         self.fc = nn.Linear(3136, 512)
-        nn.init.xavier_normal_(self.fc.weight)
+        nn.init.orthogonal_(self.fc.weight)
         self.logits = nn.Linear(512, num_actions)
-        nn.init.xavier_normal_(self.logits.weight)
+        nn.init.orthogonal_(self.logits.weight)
         self.value = nn.Linear(512, 1)
-        nn.init.xavier_normal_(self.value.weight)
+        nn.init.orthogonal_(self.value.weight)
 
     def forward(self, x):
         x = x / 255.
