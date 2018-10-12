@@ -54,8 +54,8 @@ class A2CAgent(object):
 
         self.net = Net(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
-                                             lr=0.0075,
-                                             weight_decay=0.99)
+                                             lr=0.0007,
+                                             alpha=0.99)
         # self.optimizer = torch.optim.Adam(self.net.parameters())
         # self.optimizer = torch.optim.SGD(self.net.parameters(),
         #                                  lr=0.001, momentum=0.9)
@@ -147,6 +147,8 @@ class A2CAgent(object):
 
         self.optimizer.zero_grad()
         self.loss.backward()
+        nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=0.5)
+            
         self.optimizer.step()
 
     def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
