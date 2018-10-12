@@ -12,11 +12,17 @@ class Net(nn.Module):
     def __init__(self, num_actions):
         super().__init__()
         self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
+        nn.init.xavier_normal_(self.conv1.weight)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        nn.init.xavier_normal_(self.conv2.weight)
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
+        nn.init.xavier_normal_(self.conv3.weight)
         self.fc = nn.Linear(3136, 512)
+        nn.init.xavier_normal_(self.fc.weight)
         self.logits = nn.Linear(512, num_actions)
+        nn.init.xavier_normal_(self.logits.weight)
         self.value = nn.Linear(512, 1)
+        nn.init.xavier_normal_(self.value.weight)
 
     def forward(self, x):
         x = x / 255.
@@ -48,9 +54,11 @@ class A2CAgent(object):
 
         self.net = Net(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
-                                             lr=0.00075,
+                                             lr=0.0075,
                                              weight_decay=0.99)
         # self.optimizer = torch.optim.Adam(self.net.parameters())
+        # self.optimizer = torch.optim.SGD(self.net.parameters(),
+        #                                  lr=0.001, momentum=0.9)
 
         self.eval_mode = False
 
