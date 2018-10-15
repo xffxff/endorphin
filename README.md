@@ -18,5 +18,10 @@ Also inspired by:
 - Python3
 - [PyTorch](https://pytorch.org/)
 - [Openai/Gym](https://gym.openai.com/)
-- [Stable-Balines](https://github.com/hill-a/stable-baselines)
+- [Stable-Baselines](https://github.com/hill-a/stable-baselines)
 
+### Training models
+`python -m dopamine.atari.train --base_dir=<name of the base directory> --game_name=<name of the game>`
+#### Examples
+For instance, to train a conv network controlling Atari using a2c  
+`python -m dopamine.atari.train --base_dir=/tmp/dopamine/a2c/Breakout --game_name='Breakout'`

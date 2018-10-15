@@ -97,7 +97,7 @@ class Runner(object):
         is_terminal = False
 
         while True:
-            # self.env.render('human')
+            self.env.render('human')
             observation, reward, is_terminal = self._run_one_step(action)
             total_reward += reward
             step_num += 1
@@ -169,7 +169,7 @@ class Runner(object):
     def _run_one_iteration(self, iteration):
         statistics = iteration_statistics.IterationStatistics()
         print(f'Starting iteration {iteration}')
-        self._run_train_phase()
+        # self._run_train_phase()
         self._run_eval_phase(statistics)
         return statistics.data_lists
 
@@ -187,7 +187,7 @@ class Runner(object):
 
     def run_experiment(self):
         print('Beginning training...')
-        for iteration in range(self.num_iters):
+        for iteration in range(self.start_iteration, self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            self._log_experiment(iteration, statistics)
-            self._checkpoint_experiment(iteration)
+            # self._log_experiment(iteration, statistics)
+            # self._checkpoint_experiment(iteration)
