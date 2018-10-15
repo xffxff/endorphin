@@ -11,24 +11,28 @@ class Net(nn.Module):
 
     def __init__(self, num_actions):
         super().__init__()
+        orthogonal = nn.init.orthogonal_
         self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
-        nn.init.orthogonal_(self.conv1.weight)
+        orthogonal(self.conv1.weight)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
-        nn.init.orthogonal_(self.conv2.weight)
+        orthogonal(self.conv2.weight)
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
-        nn.init.orthogonal_(self.conv3.weight)
-        self.fc = nn.Linear(3136, 512)
-        nn.init.orthogonal_(self.fc.weight)
-        self.logits = nn.Linear(512, num_actions)
-        nn.init.orthogonal_(self.logits.weight)
-        self.value = nn.Linear(512, 1)
-        nn.init.orthogonal_(self.value.weight)
+        orthogonal(self.conv3.weight)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        # self.fc = nn.Linear(3136, 512)
+        self.fc = nn.Linear(64, 256)
+        orthogonal(self.fc.weight)
+        self.logits = nn.Linear(256, num_actions)
+        orthogonal(self.logits.weight)
+        self.value = nn.Linear(256, 1)
+        orthogonal(self.value.weight)
 
     def forward(self, x):
         x = x / 255.
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
         x = torch.relu(self.conv3(x))
+        x = self.pool(x)
         x = x.view(x.size(0), -1)
         x = torch.relu(self.fc(x))
         logits = self.logits(x)
@@ -42,7 +46,7 @@ class A2CAgent(object):
                  num_actions, 
                  gamma=0.99,
                  train_period=5, 
-                 v_loss_coef=0.25,
+                 v_loss_coef=0.5,
                  entropy_coef=0.01,
                  torch_device='cuda'):
         self.num_actions = num_actions
@@ -56,9 +60,6 @@ class A2CAgent(object):
         self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
                                              lr=0.0007,
                                              alpha=0.99)
-        # self.optimizer = torch.optim.Adam(self.net.parameters())
-        # self.optimizer = torch.optim.SGD(self.net.parameters(),
-        #                                  lr=0.001, momentum=0.9)
 
         self.eval_mode = False
 
@@ -113,43 +114,45 @@ class A2CAgent(object):
         _, last_value = self.net(obs)
         last_value = last_value.view(-1).cpu().detach().numpy()
 
-        batch_target_v = []
-        for n, (reward, terminal, value) in enumerate(zip(batch_reward, batch_terminal, last_value)):
-            target_v = []
-            R = value
-            for r, t in zip(reward[::-1], terminal[::-1]):
-                R = r + self.gamma * R * (1 - t)
-                target_v.insert(0, R)
-            batch_target_v.append(target_v)
-        batch_target_v = torch.tensor(batch_target_v, dtype=torch.float32, device=self.torch_device).view(-1)
+        batch_discount_reward = self.compute_discount_rewards(batch_reward, batch_terminal, last_value)
+       
+        batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device).view(-1)
         batch_action = torch.tensor(batch_action, dtype=torch.float32, device=self.torch_device).view(-1)
         batch_obs = torch.from_numpy(batch_obs).to(self.torch_device)
         
         batch_logits, batch_v = self.net(batch_obs)
         batch_v = batch_v.view(-1)
 
-        batch_advantage = batch_target_v - batch_v
+        batch_advantage = batch_discount_reward - batch_v
 
         m = Categorical(logits=batch_logits)
         entropy = torch.mean(m.entropy())
         log_probs = m.log_prob(batch_action)
         pg_loss = - torch.mean(log_probs * batch_advantage.detach())
-        v_loss = torch.mean(torch.pow((batch_target_v.detach() - batch_v), 2))
+        v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_v), 2))
 
-        self.loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
+        loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
         if self.step_num % 100 == 0:
-            sys.stdout.write('entropy: {} '.format(entropy) + 
-                            'pg_loss: {} '.format(pg_loss) +
-                            'v_loss: {} '.format(v_loss) + 
-                            'total_loss: {}\r'.format(self.loss))
+            sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
             sys.stdout.flush()
-
+ 
         self.optimizer.zero_grad()
-        self.loss.backward()
+        loss.backward()
         nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=0.5)
             
         self.optimizer.step()
+
+    def compute_discount_rewards(self, batch_reward, batch_terminal, last_value):
+        batch_discount_reward = np.zeros_like(batch_reward)
+        for n, (reward, terminal, value) in enumerate(zip(batch_reward, batch_terminal, last_value)):
+            discount_reward = []
+            R = value
+            for r, t in zip(reward[::-1], terminal[::-1]):
+                R = r + self.gamma * R * (1 - t)
+                discount_reward.insert(0, R)
+            batch_discount_reward[n] = discount_reward
+        return batch_discount_reward
 
     def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
         if not os.path.exists(checkpoint_dir):
