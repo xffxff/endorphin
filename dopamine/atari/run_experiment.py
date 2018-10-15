@@ -1,15 +1,15 @@
 
+import multiprocessing
 import os
 import sys
 import time
-import multiprocessing
 
 import gym
 import numpy as np
-from stable_baselines.common.vec_env import SubprocVecEnv
 
 from dopamine.atari import preprocessing
 from dopamine.common import checkpointer, iteration_statistics, logger
+from stable_baselines.common.vec_env import SubprocVecEnv
 
 
 def create_atari_environment(game_name, sticky_actions=True):
@@ -169,7 +169,7 @@ class Runner(object):
     def _run_one_iteration(self, iteration):
         statistics = iteration_statistics.IterationStatistics()
         print(f'Starting iteration {iteration}')
-        # self._run_train_phase()
+        self._run_train_phase()
         self._run_eval_phase(statistics)
         return statistics.data_lists
 
@@ -189,5 +189,5 @@ class Runner(object):
         print('Beginning training...')
         for iteration in range(self.start_iteration, self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            # self._log_experiment(iteration, statistics)
-            # self._checkpoint_experiment(iteration)
+            self._log_experiment(iteration, statistics)
+            self._checkpoint_experiment(iteration)
