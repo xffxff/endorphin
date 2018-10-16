@@ -137,6 +137,7 @@ class A2CAgent(object):
 
             self.optimizer.zero_grad()
             loss.backward()
+            nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=0.5)
             self.optimizer.step()
 
             train_steps += self.n_env * self.train_interval
