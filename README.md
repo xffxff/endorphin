@@ -24,4 +24,5 @@ Also inspired by:
 `python -m dopamine.atari.train --base_dir=<name of the base directory> --game_name=<name of the game>`
 #### Examples
 For instance, to train a conv network controlling Atari using a2c  
+
 `python -m dopamine.atari.train --base_dir=/tmp/dopamine/a2c/Breakout --game_name='Breakout'`
