@@ -104,7 +104,7 @@ class Runner(object):
 
             if is_terminal or step_num == self.max_steps_per_episode:
                 break
-            action = self.agent.step(observation)
+            action = self.agent.select_action(observation)
 
         return step_num, total_reward
 
