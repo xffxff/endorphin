@@ -180,7 +180,7 @@ class AtariPreprocessing(object):
     observation = self._pool_and_resize()
 
     self.game_over = game_over
-    return observation, accumulated_reward, is_terminal, info
+    return observation, accumulated_reward, float(is_terminal), info
 
   def _fetch_grayscale_observation(self, output):
     """Returns the current observation in grayscale.
