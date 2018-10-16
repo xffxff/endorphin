@@ -90,9 +90,9 @@ class A2CAgent(object):
         obs = env.reset()
         while train_steps < min_steps:
             obs, batch_obs, batch_action, batch_discount_reward = self._collect_information(env, obs)
-            # batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device)
-            # batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device)
-            # batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
+            batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device)
+            batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device)
+            batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
             
             batch_logits, batch_v = self.net(batch_obs)
             batch_v = batch_v.view(-1)
@@ -126,27 +126,30 @@ class A2CAgent(object):
             action_buffer.append(action)
             reward_buffer.append(reward)
             terminal_buffer.append(terminal)
-        # obs_buffer = np.asarray(obs_buffer, dtype=obs.dtype)
-        # action_buffer = np.asarray(action_buffer)
-        # reward_buffer = np.asarray(reward_buffer, dtype=np.float32)
-        # terminal_buffer = np.asarray(terminal_buffer, dtype=np.bool)
+        obs_buffer = np.asarray(obs_buffer, dtype=obs.dtype)
+        action_buffer = np.asarray(action_buffer)
+        reward_buffer = np.asarray(reward_buffer, dtype=np.float32)
+        terminal_buffer = np.asarray(terminal_buffer, dtype=np.bool)
 
-        obs_buffer = torch.tensor(obs_buffer, dtype=torch.float32, device=self.torch_device)
-        action_buffer = torch.tensor(action_buffer, dtype=torch.int32, device=self.torch_device)
-        reward_buffer = torch.tensor(reward_buffer, dtype=torch.float32, device=self.torch_device)
-        terminal_buffer = torch.tensor(terminal_buffer, dtype=torch.float32, device=self.torch_device)
+        # obs_buffer = torch.tensor(obs_buffer, dtype=torch.float32, device=self.torch_device)
+        # action_buffer = torch.tensor(action_buffer, dtype=torch.int32, device=self.torch_device)
+        # reward_buffer = torch.tensor(reward_buffer, dtype=torch.float32, device=self.torch_device)
+        # terminal_buffer = torch.tensor(terminal_buffer, dtype=torch.float32, device=self.torch_device)
 
         most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
-        # most_recent_value = most_recent_value.cpu().detach().numpy()
-        discount_reward_buffer = torch.zeros_like(reward_buffer)
+        most_recent_value = most_recent_value.cpu().detach().numpy()
+        discount_reward_buffer = np.zeros_like(reward_buffer)
         next_reward = most_recent_value.squeeze()
         for step in reversed(range(self.train_period)):
             next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_reward
             discount_reward_buffer[step] = next_reward
 
-        obs_buffer, action_buffer, discount_reward_buffer = \
-            map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer))
+        # obs_buffer, action_buffer, discount_reward_buffer = \
+        #     map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer))
+        obs_buffer = obs_buffer.swapaxes(0, 1).reshape(-1, 4, 84, 84)
+        action_buffer = action_buffer.swapaxes(0, 1).reshape(-1)
+        discount_reward_buffer = discount_reward_buffer.reshape(-1)
         return obs, obs_buffer, action_buffer, discount_reward_buffer
     
     def _train_step(self, obs):
@@ -190,7 +193,7 @@ class A2CAgent(object):
 
     def _swap_and_flatten(self, array):
         shape = array.shape
-        return array.transpose(0, 1).contiguous().view(shape[0] * shape[1], *shape[2:])
+        return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def compute_discount_rewards(self, batch_reward, batch_terminal, last_value):
         batch_discount_reward = np.zeros_like(batch_reward)
