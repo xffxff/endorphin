@@ -85,11 +85,9 @@ class Runner(object):
             total_reward += reward
             step_num += 1
 
-            reward = np.clip(reward, -1, 1)
-
             if is_terminal or step_num == self.max_steps_per_episode:
                 break
-            action = self.agent.step(reward, observation, is_terminal)
+            action = self.agent.step(observation)
 
         return step_num, total_reward
 
@@ -127,27 +125,11 @@ class Runner(object):
               average_return)
         statistics.append({'eval_average_return': average_return})
 
-    def _run_one_train_phase(self, min_steps):
-        del self.agent.obs_buffer[:]
-        del self.agent.action_buffer[:]
-        del self.agent.reward_buffer[:]
-        del self.agent.terminal_buffer[:]
-
-        step_count = 0
-
-        action = self._initialize_episode()
-
-        while step_count < min_steps:
-            observation, reward, terminal = self._run_one_step(action)
-            step_count += self.n_cpu
-            reward = np.clip(reward, -1, 1)
-            action = self.agent.step(reward, observation, terminal)
-
     def _run_train_phase(self):
         self.env = self.train_env
         self.agent.eval_mode = False
         start_time = time.time()
-        self._run_one_train_phase(self.train_steps)
+        self.agent.train(self.env, self.train_steps)
         time_delta = time.time() - start_time
         print('One training phase cost: ', time_delta, 's')
 
