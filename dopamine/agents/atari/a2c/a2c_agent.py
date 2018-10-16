@@ -18,13 +18,11 @@ class Net(nn.Module):
         orthogonal(self.conv2.weight)
         self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
         orthogonal(self.conv3.weight)
-        self.pool = nn.AdaptiveAvgPool2d(1)
-        # self.fc = nn.Linear(3136, 512)
-        self.fc = nn.Linear(64, 256)
+        self.fc = nn.Linear(3136, 512)
         orthogonal(self.fc.weight)
-        self.logits = nn.Linear(256, num_actions)
+        self.logits = nn.Linear(512, num_actions)
         orthogonal(self.logits.weight)
-        self.value = nn.Linear(256, 1)
+        self.value = nn.Linear(512, 1)
         orthogonal(self.value.weight)
 
     def forward(self, x):
@@ -32,7 +30,6 @@ class Net(nn.Module):
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
         x = torch.relu(self.conv3(x))
-        x = self.pool(x)
         x = x.view(x.size(0), -1)
         x = torch.relu(self.fc(x))
         logits = self.logits(x)
@@ -89,18 +86,7 @@ class A2CAgent(object):
         m = Categorical(logits=logits)
         action = m.sample()
         action = action.tolist()
-        return action
-    
-    def begin_episode(self, obs):
-        """Return the agent's first action for this episode.
 
-        Args:
-            obs: numpy.ndarray, the environment's initial observation.
-        
-        Returns:
-            int, the selected action.
-        """
-        action = self.select_action(obs)
         return action
 
     def train(self, env, min_steps):
@@ -113,7 +99,7 @@ class A2CAgent(object):
         train_steps  = 0
         obs = env.reset()
         while train_steps < min_steps:
-            obs, batch_obs, batch_action, batch_discount_reward = self._collect_information(env, obs)
+            obs, batch_obs, batch_action, batch_discount_reward = self._collect_experience(env, obs)
             batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device).view(-1)
             batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device).view(-1)
             batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
@@ -143,8 +129,8 @@ class A2CAgent(object):
             train_steps += self.n_env * self.train_interval
         return train_steps
 
-    def _collect_information(self, env, obs):
-        """Collect information when agent interact with the environment.
+    def _collect_experience(self, env, obs):
+        """Collect experience when agent interact with the environment.
 
         Args:
             env: the environment the agent interact with.
@@ -161,7 +147,7 @@ class A2CAgent(object):
             action = self.select_action(obs)
             obs, reward, terminal, info = env.step(action)
             action_buffer.append(action)
-            reward_buffer.append(reward)
+            reward_buffer.append(np.clip(reward, -1, 1))
             terminal_buffer.append(terminal)
 
         batch_obs = np.asarray(obs_buffer, dtype=np.float32).swapaxes(0, 1).reshape(-1, 4, 84, 84)
@@ -171,7 +157,7 @@ class A2CAgent(object):
 
         most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
-        most_recent_value = most_recent_value.cpu().detach().numpy()
+        most_recent_value = most_recent_value.view(-1).cpu().detach().numpy()
 
         batch_discount_reward = self.compute_discount_rewards(batch_reward, batch_terminal, most_recent_value)
       

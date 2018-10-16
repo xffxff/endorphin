@@ -83,7 +83,7 @@ class Runner(object):
 
     def _initialize_episode(self):
         initial_observation = self.env.reset()
-        return self.agent.begin_episode(initial_observation)
+        return self.agent.select_action(initial_observation)
 
     def _run_one_step(self, action):
         observation, reward, is_terminal, _ = self.env.step(action)
