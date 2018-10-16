@@ -78,12 +78,12 @@ class A2CAgent(object):
             batch_advantage = batch_discount_reward - batch_v
 
             m = Categorical(logits=batch_logits)
-            entopy = torch.mean(m.entropy())
+            entropy = torch.mean(m.entropy())
             log_probs = m.log_prob(batch_action)
             pg_loss = - torch.mean(log_probs * batch_advantage.detach())
             v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_v), 2))
 
-            loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entopy
+            loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
             self.optimizer.zero_grad()
             loss.backward()

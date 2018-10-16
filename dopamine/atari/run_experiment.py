@@ -58,7 +58,7 @@ class Runner(object):
         self.train_env = create_multi_environment(self.eval_env, self.n_cpu)
         self.env = self.train_env
 
-        self.agent = create_agent_fn(self.env)
+        self.agent = create_agent_fn(self.env, self.n_cpu)
         self._create_directories()  
         self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
 
@@ -97,16 +97,14 @@ class Runner(object):
         is_terminal = False
 
         while True:
-            self.env.render('human')
+            # self.env.render('human')
             observation, reward, is_terminal = self._run_one_step(action)
             total_reward += reward
             step_num += 1
 
-            reward = np.clip(reward, -1, 1)
-
             if is_terminal or step_num == self.max_steps_per_episode:
                 break
-            action = self.agent.step(reward, observation, is_terminal)
+            action = self.agent.step(observation)
 
         return step_num, total_reward
 
@@ -143,26 +141,11 @@ class Runner(object):
         print(f'Average undiscounted return per evaluation episode: {average_return}')
         statistics.append({'eval_average_return': average_return})
 
-    def _run_one_train_phase(self, min_steps):
-        del self.agent.obs_buffer[:]
-        del self.agent.action_buffer[:]
-        del self.agent.reward_buffer[:]
-        del self.agent.terminal_buffer[:]
-
-        step_count = 0
-        action = self._initialize_episode()
-
-        while step_count < min_steps:
-            observation, reward, terminal = self._run_one_step(action)
-            step_count += self.n_cpu
-            reward = np.clip(reward, -1, 1)
-            action = self.agent.step(reward, observation, terminal)
-
     def _run_train_phase(self):
         self.env = self.train_env
         self.agent.eval_mode = False
         start_time = time.time()
-        self._run_one_train_phase(self.train_steps)
+        self.agent.train(self.env, self.train_steps)
         time_delta = time.time() - start_time
         print(f'\nOne training phase cost: {time_delta}s')
 

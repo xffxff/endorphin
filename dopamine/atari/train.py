@@ -17,9 +17,9 @@ flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 FLAGS = flags.FLAGS
 
 
-def create_agent(environment):
+def create_agent(environment, n_env):
     if FLAGS.agent_name == 'a2c':
-        return a2c_agent.A2CAgent(environment.action_space.n)
+        return a2c_agent.A2CAgent(environment.action_space.n, n_env=n_env)
 
 def create_runner(create_agent_fn):
     return run_experiment.Runner(create_agent_fn, FLAGS.base_dir, game_name=FLAGS.game_name)

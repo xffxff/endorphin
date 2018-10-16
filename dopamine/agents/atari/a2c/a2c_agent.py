@@ -43,13 +43,15 @@ class Net(nn.Module):
 class A2CAgent(object):
 
     def __init__(self,
-                 num_actions, 
+                 num_actions,
+                 n_env, 
                  gamma=0.99,
                  train_period=5, 
                  v_loss_coef=0.5,
                  entropy_coef=0.01,
                  torch_device='cuda'):
         self.num_actions = num_actions
+        self.n_env = n_env
         self.gamma = gamma
         self.train_period = train_period
         self.v_loss_coef = v_loss_coef
@@ -64,10 +66,6 @@ class A2CAgent(object):
         self.eval_mode = False
 
         self.step_num = 0
-        self.obs_buffer = []
-        self.action_buffer = []
-        self.reward_buffer = []
-        self.terminal_buffer = []
         
     def _select_action(self, obs):
         if self.eval_mode:
@@ -80,29 +78,71 @@ class A2CAgent(object):
         return action
     
     def begin_episode(self, obs):
-        self.obs_buffer.append(obs)
         action = self._select_action(obs)
-        self.action_buffer.append(action)
         return action
 
-    def step(self, reward, obs, terminal):
-        self.reward_buffer.append(reward)
-        self.terminal_buffer.append(terminal)
-
-        self.step_num += 1
-
-        if self.step_num % self.train_period == 0:
-            if not self.eval_mode:
-                self._train_step(obs)
-            del self.obs_buffer[:]
-            del self.action_buffer[:]
-            del self.reward_buffer[:]
-            del self.terminal_buffer[:]
-        
-        self.obs_buffer.append(obs)
+    def step(self, obs):
         action = self._select_action(obs)
-        self.action_buffer.append(action)
         return action
+
+    def train(self, env, min_steps):
+        train_steps  = 0
+        obs = env.reset()
+        while train_steps < min_steps:
+            obs, batch_obs, batch_action, batch_discount_reward = self._collect_information(env, obs)
+            batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device)
+            batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device)
+            batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
+            
+            batch_logits, batch_v = self.net(batch_obs)
+            batch_v = batch_v.view(-1)
+
+            batch_advantage = batch_discount_reward - batch_v
+
+            m = Categorical(logits=batch_logits)
+            entropy = torch.mean(m.entropy())
+            log_probs = m.log_prob(batch_action)
+            pg_loss = - torch.mean(log_probs * batch_advantage.detach())
+            v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_v), 2))
+
+            loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
+
+            if train_steps % 100 == 0:
+                sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
+                sys.stdout.flush()
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            train_steps += 4 * self.train_period
+
+    def _collect_information(self, env, obs):
+        obs_buffer, action_buffer, reward_buffer, terminal_buffer = [], [], [], []
+        for _ in range(self.train_period):
+            obs_buffer.append(obs)
+            action = self._select_action(obs)
+            obs, reward, terminal, info = env.step(action)
+            action_buffer.append(action)
+            reward_buffer.append(reward)
+            terminal_buffer.append(terminal)
+        obs_buffer = np.asarray(obs_buffer, dtype=obs.dtype)
+        action_buffer = np.asarray(action_buffer)
+        reward_buffer = np.asarray(reward_buffer, dtype=np.float32)
+        terminal_buffer = np.asarray(terminal_buffer, dtype=np.bool)
+
+        most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
+        _, most_recent_value = self.net(most_recent_obs)
+        most_recent_value = most_recent_value.cpu().detach().numpy()
+        discount_reward_buffer = np.zeros_like(reward_buffer)
+        next_reward = most_recent_value.squeeze()
+        for step in reversed(range(self.train_period)):
+            next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_reward
+            discount_reward_buffer[step] = next_reward
+
+        obs_buffer, action_buffer, discount_reward_buffer = \
+            map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer))
+        return obs, obs_buffer, action_buffer, discount_reward_buffer
     
     def _train_step(self, obs):
         batch_obs = np.asarray(self.obs_buffer, dtype=np.float32).swapaxes(0, 1).reshape(-1, 4, 84, 84)
@@ -142,6 +182,10 @@ class A2CAgent(object):
         nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=0.5)
             
         self.optimizer.step()
+
+    def _swap_and_flatten(self, array):
+        shape = array.shape
+        return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def compute_discount_rewards(self, batch_reward, batch_terminal, last_value):
         batch_discount_reward = np.zeros_like(batch_reward)
