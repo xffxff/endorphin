@@ -153,7 +153,7 @@ class PPOAgent(object):
             obs, reward, terminal, info = env.step(action)
             reward = np.clip(reward, -1, 1)
             action_buffer.append(action)
-            reward_buffer.append(np.clip(reward, -1, 1))
+            reward_buffer.append(reward)
             terminal_buffer.append(terminal)
 
         obs_buffer = np.asarray(obs_buffer, dtype=obs.dtype)

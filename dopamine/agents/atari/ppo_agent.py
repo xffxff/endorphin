@@ -111,6 +111,8 @@ class PPOAgent(object):
         obs = env.reset()
         while train_steps < min_steps:
             obs, obs_buffer, action_buffer, discount_reward_buffer = self._collect_experience(env, obs)
+            obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
+                map(self._array_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
 
             ids = np.arange(self.train_interval)
             for epoch in range(self.epoches):
@@ -175,34 +177,38 @@ class PPOAgent(object):
             obs, reward, terminal, info = env.step(action)
             reward = np.clip(reward, -1, 1)
             action_buffer.append(action)
-            reward_buffer.append(np.clip(reward, -1, 1))
+            reward_buffer.append(reward)
             terminal_buffer.append(terminal)
 
-        obs_buffer = np.asarray(obs_buffer, dtype=obs.dtype)
-        reward_buffer = np.asarray(reward_buffer, dtype=np.float32)
-        action_buffer = np.asarray(action_buffer)
-        terminal_buffer = np.asarray(terminal_buffer, dtype=np.bool)
-        self.log_probs = np.asarray(self.log_probs, dtype=np.float32)
-        self.values = np.asarray(self.values, dtype=np.float32)
+        obs_buffer = np.asarray(obs_buffer, dtype=np.float32).swapaxes(0, 1)
+        reward_buffer = np.asarray(reward_buffer, dtype=np.float32).swapaxes(0, 1)
+        action_buffer = np.asarray(action_buffer, dtype=np.int32).swapaxes(0, 1)
+        terminal_buffer = np.asarray(terminal_buffer, dtype=np.bool).swapaxes(0, 1)
+        self.log_probs = np.asarray(self.log_probs, dtype=np.float32).swapaxes(0, 1)
+        self.values = np.asarray(self.values, dtype=np.float32).swapaxes(0, 1)
 
         most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
-        most_recent_value = most_recent_value.cpu().detach().numpy()
-        
-        discount_reward_buffer = np.zeros_like(reward_buffer)
-        next_reward = most_recent_value.squeeze()
-        for step in reversed(range(self.train_interval)):
-            next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_reward
-            discount_reward_buffer[step] = next_reward
+        most_recent_value = most_recent_value.view(-1).cpu().detach().numpy()
 
-        obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
-            map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
+        discount_reward_buffer = self.compute_discount_rewards(reward_buffer, terminal_buffer, most_recent_value)
+
+        
+        
+        # discount_reward_buffer = np.zeros_like(reward_buffer)
+        # next_reward = most_recent_value.squeeze()
+        # for step in reversed(range(self.train_interval)):
+        #     next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_reward
+        #     discount_reward_buffer[step] = next_reward
+
+        # obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
+        #     map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
         return obs, obs_buffer, action_buffer, discount_reward_buffer
 
-    def _swap_and_flatten(self, array):
-        """swap the axis and flatten the array"""
+    def _array_flatten(self, array):
+        """flatten the array"""
         shape = array.shape
-        return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
+        return array.reshape(shape[0] * shape[1], *shape[2:])
 
     def compute_discount_rewards(self, batch_reward, batch_terminal, most_recent_value):
         """Compute the discount rewards.
