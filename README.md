@@ -21,8 +21,12 @@ Also inspired by:
 - [Stable-Baselines](https://github.com/hill-a/stable-baselines)
 
 ### Training models
-`python -m dopamine.atari.train --base_dir=<name of the base directory> --game_name=<name of the game>`
+`python -m dopamine.atari.train --agent_name=<name of the agent> --base_dir=<name of the base directory> --game_name=<name of the game>`
 #### Examples
-For instance, to train a conv network controlling Atari using a2c  
+To train a fully-connected network controlling Classic Control using ppo  
 
-`python -m dopamine.atari.train --base_dir=/tmp/dopamine/a2c/Breakout --game_name='Breakout'`
+`python -m dopamine.classic.train --agent_name='ppo' --base_dir=/tmp/dopamine/ppo/CartPole --game_name='CartPole-v0' `
+
+To train a conv network controlling Atari using a2c  
+
+`python -m dopamine.atari.train --agent_name='a2c' --base_dir=/tmp/dopamine/a2c/Breakout --game_name='Breakout'`

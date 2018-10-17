@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import multiprocessing
 
 import gym
 from stable_baselines.common.vec_env import SubprocVecEnv
@@ -30,7 +31,7 @@ class Runner(object):
                  max_steps_per_episode=27000):
         self.base_dir = base_dir
         self.num_iters = num_iters
-        self.n_cpu = n_cpu
+        self.n_cpu = multiprocessing.cpu_count()
         self.train_steps = train_steps
         self.eval_steps = eval_steps
         self.log_every_n = log_every_n
@@ -41,9 +42,9 @@ class Runner(object):
         self.train_env = create_multi_environment(self.eval_env, n_cpu)
         self.env = self.train_env
 
-        self.agent = create_agent_fn(self.env)
+        self.agent = create_agent_fn(self.env, self.n_cpu)
         self._create_directories()  
-        # self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
+        self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
 
     def _create_directories(self):
         self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
@@ -154,7 +155,7 @@ class Runner(object):
 
     def run_experiment(self):
         print('Beginning training...')
-        for iteration in range(self.num_iters):
+        for iteration in range(self.start_iteration, self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            # self._log_experiment(iteration, statistics)
-            # self._checkpoint_experiment(iteration)
+            self._log_experiment(iteration, statistics)
+            self._checkpoint_experiment(iteration)
