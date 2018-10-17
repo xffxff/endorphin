@@ -3,10 +3,10 @@ from absl import app
 from absl import flags
 
 from dopamine.atari import run_experiment
-from dopamine.agents.atari import a2c_agent
+from dopamine.agents.atari import a2c_agent, ppo_agent
 
-flags.DEFINE_string('agent_name', 'a2c', 'Name of the agent')
-flags.DEFINE_string('base_dir', '/tmp/dopamine/a2c/Pong', 'Base directory to host all required sub-directories')
+flags.DEFINE_string('agent_name', 'ppo', 'Name of the agent')
+flags.DEFINE_string('base_dir', '/tmp/dopamine/ppo/Breakout', 'Base directory to host all required sub-directories')
 flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 # flags.DEFINE_string(
 #     'schedule', 'continuous_train_and_eval',
@@ -21,6 +21,8 @@ def create_agent(environment, n_env):
     """Select an agent"""
     if FLAGS.agent_name == 'a2c':
         return a2c_agent.A2CAgent(environment.action_space.n, n_env=n_env)
+    if FLAGS.agent_name == 'ppo':
+        return ppo_agent.PPOAgent(environment.action_space.n, n_env=n_env)
 
 def create_runner(create_agent_fn):
     """Create an experiment Runner"""

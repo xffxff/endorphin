@@ -39,7 +39,7 @@ class Runner(object):
                  game_name='Breakout',
                  sticky_actions=True,
                  num_iters=200,
-                 train_steps=250000,
+                 train_steps=1000,
                  eval_steps=10000,
                  log_every_n=1,
                  log_file_prefix='log',

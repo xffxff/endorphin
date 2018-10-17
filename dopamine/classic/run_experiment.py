@@ -21,7 +21,6 @@ class Runner(object):
                  create_agent_fn,
                  base_dir,
                  game_name='CartPole-v0',
-                 n_cpu = 4,
                  num_iters=200,
                  train_steps=10000,
                  eval_steps=5000,
@@ -39,7 +38,7 @@ class Runner(object):
         self.max_steps_per_episode = max_steps_per_episode
 
         self.eval_env = gym.make(game_name)
-        self.train_env = create_multi_environment(self.eval_env, n_cpu)
+        self.train_env = create_multi_environment(self.eval_env, self.n_cpu)
         self.env = self.train_env
 
         self.agent = create_agent_fn(self.env, self.n_cpu)
@@ -131,7 +130,7 @@ class Runner(object):
         start_time = time.time()
         self.agent.train(self.env, self.train_steps)
         time_delta = time.time() - start_time
-        print('One training phase cost: ', time_delta, 's')
+        print('\nOne training phase cost: ', time_delta, 's')
 
     def _run_one_iteration(self, iteration):
         statistics = iteration_statistics.IterationStatistics()

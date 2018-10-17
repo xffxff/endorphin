@@ -1,7 +1,6 @@
 
 import os
 import sys
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -11,12 +10,27 @@ from torch.distributions import Categorical
 class Net(nn.Module):
 
     def __init__(self, num_actions):
-        super(Net, self).__init__()
-        self.fc = nn.Linear(4, 128)
-        self.logits = nn.Linear(128, num_actions)
-        self.value = nn.Linear(128, 1)
+        super().__init__()
+        orthogonal = nn.init.orthogonal_
+        self.conv1 = nn.Conv2d(4, 32, 8, stride=4)
+        orthogonal(self.conv1.weight)
+        self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
+        orthogonal(self.conv2.weight)
+        self.conv3 = nn.Conv2d(64, 64, 3, stride=1)
+        orthogonal(self.conv3.weight)
+        self.fc = nn.Linear(3136, 512)
+        orthogonal(self.fc.weight)
+        self.logits = nn.Linear(512, num_actions)
+        orthogonal(self.logits.weight)
+        self.value = nn.Linear(512, 1)
+        orthogonal(self.value.weight)
 
     def forward(self, x):
+        x = x / 255.
+        x = torch.relu(self.conv1(x))
+        x = torch.relu(self.conv2(x))
+        x = torch.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
         x = torch.relu(self.fc(x))
         logits = self.logits(x)
         value = self.value(x)
@@ -24,19 +38,28 @@ class Net(nn.Module):
 
 
 class PPOAgent(object):
-    """An implementation of PPO agent"""
+    """An implementation of the A2C agnet"""
 
-    def __init__(self, 
+    def __init__(self,
                  num_actions,
-                 n_env,
+                 n_env, 
                  gamma=0.99,
-                 train_interval=128,
-                 epoches=4, 
-                 batch_steps=128,
-                 v_loss_coef=0.25,
+                 train_interval=256, 
+                 epoches=4,
+                 batch_steps=256,
+                 v_loss_coef=0.5,
                  entropy_coef=0.01,
-                 torch_device='cpu'):
-        
+                 torch_device='cuda'):
+        """Initialize the agent.
+
+        Args:
+            num_actions: int, number of the actions the agent can take at any state.
+            gamma: float, discount factor with usual RL meaning.
+            train_interval: int, the number of step the agent take every training.
+            v_loss_coef: float, the coefficient of the value loss.
+            entropy_coef: float, the coefficient of the entropy.
+            torch_device: string, the Pytorch device on which the program is executed.
+        """
         self.num_actions = num_actions
         self.n_env = n_env
         self.gamma = gamma
@@ -47,8 +70,10 @@ class PPOAgent(object):
         self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net(num_actions)
-        self.optimizer = torch.optim.Adam(self.net.parameters())
+        self.net = Net(num_actions).to(self.torch_device)
+        self.optimizer = torch.optim.RMSprop(self.net.parameters(), 
+                                             lr=0.0007,
+                                             alpha=0.99)
 
         self.eval_mode = False
 
@@ -71,10 +96,8 @@ class PPOAgent(object):
         if not self.eval_mode:
             self.values.append(value.cpu().detach().numpy())
             self.log_probs.append(m.log_prob(action).cpu().detach().numpy())
-            action = action.tolist()
-        else:
-            action = action.item()
-        
+
+        action = action.tolist()
         return action
 
     def train(self, env, min_steps):
@@ -121,7 +144,7 @@ class PPOAgent(object):
 
                 loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-                if train_steps % 1 == 0:
+                if train_steps % 100 == 0:
                     sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
                     sys.stdout.flush()
 
@@ -131,7 +154,6 @@ class PPOAgent(object):
                 self.optimizer.step()
 
             train_steps += self.n_env * self.train_interval
-
 
     def _collect_experience(self, env, obs):
         """Collect experience when agent interact with the environment.
@@ -182,6 +204,27 @@ class PPOAgent(object):
         shape = array.shape
         return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
+    def compute_discount_rewards(self, batch_reward, batch_terminal, most_recent_value):
+        """Compute the discount rewards.
+
+        Args:
+            batch_reward: numpy.ndarray, a series of rewards.
+            batch_terminal: numpy.ndarray, a series of terminals.
+            most_recent_value: numpy.ndarray, the value of the most recent observation.
+        
+        Returns:
+            batch_discount_reward: numpy.ndarray, a series of discount rewards.
+        """
+        batch_discount_reward = np.zeros_like(batch_reward)
+        for n, (reward, terminal, value) in enumerate(zip(batch_reward, batch_terminal, most_recent_value)):
+            discount_reward = []
+            R = value
+            for r, t in zip(reward[::-1], terminal[::-1]):
+                R = r + self.gamma * R * (1 - t)
+                discount_reward.insert(0, R)
+            batch_discount_reward[n] = discount_reward
+        return batch_discount_reward
+
     def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
         """Returns a self-contained bundle of the agent's state.
 
@@ -196,7 +239,8 @@ class PPOAgent(object):
         if not os.path.exists(checkpoint_dir):
             return None
         
-        torch.save(self.net.state_dict(), os.path.join(checkpoint_dir, 'torch_ckpt-{}'.format(iteration_number)))
+        torch.save(self.net.state_dict(), os.path.join(checkpoint_dir, 'net_ckpt-{}'.format(iteration_number)))
+        torch.save(self.optimizer.state_dict(), os.path.join(checkpoint_dir, 'opt_ckpt-{}'.format(iteration_number)))
 
         bundle_dict = {}
         return bundle_dict
@@ -223,5 +267,10 @@ class PPOAgent(object):
             if key in bundle_dict:
                 self.__dict__[key] = bundle_dict[key]
 
-        self.net.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'torch_ckpt-{}'.format(iteration_number))))
+        self.net.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'net_ckpt-{}'.format(iteration_number))))
+        self.optimizer.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'opt_ckpt-{}'.format(iteration_number))))
         return True
+
+
+        
+        
