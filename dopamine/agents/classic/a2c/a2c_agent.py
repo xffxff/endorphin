@@ -44,7 +44,12 @@ class A2CAgent(object):
 
         self.step_num = 0
         
-    def _select_action(self, obs):
+    def select_action(self, obs):
+        """Select an action from the set of available actions.
+
+        Returns:
+            int, the selected action.
+        """
         obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         logits, value = self.net(obs)
         m = Categorical(logits=logits)
@@ -54,16 +59,14 @@ class A2CAgent(object):
         else:
             action = action.tolist()
         return action
-    
-    def begin_episode(self, obs):
-        action = self._select_action(obs)
-        return action
-
-    def step(self, obs):
-        action = self._select_action(obs)
-        return action
 
     def train(self, env, min_steps):
+        """Train every regular steps.
+
+        Args:
+            env: the environment.
+            min_steps: int, the minimum steps to execute.
+        """
         train_steps  = 0
         obs = env.reset()
         while train_steps < min_steps:
@@ -92,10 +95,21 @@ class A2CAgent(object):
             train_steps += 4 * self.train_period
 
     def _collect_information(self, env, obs):
+        """Collect experience when agent interact with the environment.
+
+        Args:
+            env: the environment the agent interact with.
+            obs: numpy.ndarray, the most recent observation.
+        Returns:
+            obs: numpy.ndarray, the new most recent observation.
+            batch_obs: numpy.ndarray, a series of observations.
+            batch_action: numpy.ndarray, a series of actions.
+            batch_discount_reward: numpy.ndarray, a series of rewards.
+        """
         obs_buffer, action_buffer, reward_buffer, terminal_buffer = [], [], [], []
         for _ in range(self.train_period):
             obs_buffer.append(obs)
-            action = self._select_action(obs)
+            action = self.select_action(obs)
             obs, reward, terminal, info = env.step(action)
             action_buffer.append(action)
             reward_buffer.append(reward)
@@ -123,6 +137,16 @@ class A2CAgent(object):
         return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
+        """Returns a self-contained bundle of the agent's state.
+
+        Args:
+            checkpoint_dir: str, directory where TensorFlow objects will be saved.
+            iteration_number: int, iteration number to use for naming the checkpoint file.
+
+        Returns:
+            A dict containing additional Python objects to be checkpointed by the
+            experiment. If the checkpoint directory does not exist, returns None.
+        """
         if not os.path.exists(checkpoint_dir):
             return None
         
@@ -132,8 +156,23 @@ class A2CAgent(object):
         return bundle_dict
     
     def unbundle(self, checkpoint_dir, iteration_number, bundle_dict):
+        """Restores the agent from a checkpoint.
 
+        Restores the agent's Python objects to those specified in bundle_dictionary,
+        and restores the TensorFlow objects to those specified in the
+        checkpoint_dir. If the checkpoint_dir does not exist, will not reset the
+        agent's state.
 
+        Args:
+        checkpoint_dir: str, path to the checkpoint saved by tf.Save.
+        iteration_number: int, checkpoint version, used when restoring replay
+            buffer.
+        bundle_dictionary: dict, containing additional Python objects owned by
+            the agent.
+
+        Returns:
+        bool, True if unbundling was successful.
+        """
         for key in self.__dict__:
             if key in bundle_dict:
                 self.__dict__[key] = bundle_dict[key]

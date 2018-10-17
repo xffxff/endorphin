@@ -1,13 +1,12 @@
 
 import os
-import gym
-import time
 import sys
-import numpy as np
-from dopamine.common import iteration_statistics
-from dopamine.common import logger
-from dopamine.common import checkpointer
+import time
+
+import gym
 from stable_baselines.common.vec_env import SubprocVecEnv
+
+from dopamine.common import checkpointer, iteration_statistics, logger
 
 
 def create_multi_environment(env, n_cpu):
@@ -44,7 +43,7 @@ class Runner(object):
 
         self.agent = create_agent_fn(self.env)
         self._create_directories()  
-        self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
+        # self._initialize_checkpointer_and_maybe_resume(checkpoint_file_prefix)
 
     def _create_directories(self):
         self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
@@ -67,7 +66,7 @@ class Runner(object):
 
     def _initialize_episode(self):
         initial_observation = self.env.reset()
-        return self.agent.begin_episode(initial_observation)
+        return self.agent.select_action(initial_observation)
 
     def _run_one_step(self, action):
         observation, reward, is_terminal, _ = self.env.step(action)
@@ -87,7 +86,7 @@ class Runner(object):
 
             if is_terminal or step_num == self.max_steps_per_episode:
                 break
-            action = self.agent.step(observation)
+            action = self.agent.select_action(observation)
 
         return step_num, total_reward
 
@@ -157,5 +156,5 @@ class Runner(object):
         print('Beginning training...')
         for iteration in range(self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            self._log_experiment(iteration, statistics)
-            self._checkpoint_experiment(iteration)
+            # self._log_experiment(iteration, statistics)
+            # self._checkpoint_experiment(iteration)

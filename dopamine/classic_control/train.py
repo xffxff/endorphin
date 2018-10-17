@@ -4,6 +4,7 @@ from absl import flags
 
 from dopamine.classic_control import run_experiment
 from dopamine.agents.classic.a2c import a2c_agent
+from dopamine.agents.classic.ppo import ppo_agent
 
 # flags.DEFINE_string('agent_name', None, 'Name of the agent')
 # # flags.DEFINE_string('base_dir', None, 'Base directory to host all required sub-directories')
@@ -17,7 +18,8 @@ from dopamine.agents.classic.a2c import a2c_agent
 
 
 def create_agent(environment):
-    return a2c_agent.A2CAgent(environment.action_space.n)
+    # return a2c_agent.A2CAgent(environment.action_space.n)
+    return ppo_agent.PPOAgent(environment.action_space.n)
 
 def create_runner(create_agent_fn, base_dir):
     return run_experiment.Runner(create_agent_fn, base_dir)
