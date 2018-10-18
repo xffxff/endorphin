@@ -133,24 +133,25 @@ class PPOAgent(object):
                     m = Categorical(logits=batch_logits)
                     entropy = torch.mean(m.entropy())
 
-                    batch_advantage = (batch_discount_reward - batch_old_value).detach()
+                    batch_advantage = (batch_discount_reward - batch_old_value)
                     batch_advantage = (batch_advantage - batch_advantage.mean()) / (batch_advantage.std() + 1e-8)
 
                     batch_log_prob = m.log_prob(batch_action)
 
-                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
-                    v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
-                    v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
-                    v_loss = torch.mean(torch.max(v_loss1, v_loss2))
+                    # batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
+                    # v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
+                    # v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
+                    # v_loss = torch.mean(torch.max(v_loss1, v_loss2))
+                    v_loss = torch.mean(torch.pow(batch_discount_reward.detach() - batch_value, 2))
 
                     ratio = torch.exp(batch_log_prob - batch_old_log_prob)
-                    pg_loss1 = - ratio * batch_advantage
-                    pg_loss2 = - batch_advantage * torch.clamp(ratio, 0.9, 1.1)
+                    pg_loss1 = - ratio * batch_advantage.detach()
+                    pg_loss2 = - batch_advantage.detach() * torch.clamp(ratio, 0.9, 1.1)
                     pg_loss = torch.mean(torch.max(pg_loss1, pg_loss2))
 
                     loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-                    sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
+                    sys.stdout.write(f'steps: {train_steps + self.n_env * self.train_interval} entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
                     sys.stdout.flush()
 
                     self.optimizer.zero_grad()
@@ -175,6 +176,7 @@ class PPOAgent(object):
         obs_buffer, action_buffer, reward_buffer, terminal_buffer = [], [], [], []
         self.log_probs, self.values = [], []
         for _ in range(self.train_interval):
+            obs = obs.transpose(0, 3, 1, 2)
             obs_buffer.append(obs)
             action = self.select_action(obs)
             obs, reward, terminal, info = env.step(action)
@@ -190,7 +192,7 @@ class PPOAgent(object):
         self.log_probs = np.asarray(self.log_probs, dtype=np.float32)
         self.values = np.asarray(self.values, dtype=np.float32)
 
-        most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
+        most_recent_obs = torch.tensor(obs.transpose(0, 3, 1, 2), dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
         most_recent_value = most_recent_value.view(-1).cpu().detach().numpy().squeeze()
 

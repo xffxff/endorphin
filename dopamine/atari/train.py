@@ -6,7 +6,7 @@ from dopamine.atari import run_experiment
 from dopamine.agents.atari import a2c_agent, ppo_agent
 
 flags.DEFINE_string('agent_name', 'ppo', 'Name of the agent')
-flags.DEFINE_string('base_dir', '/tmp/dopamine/ppo/Breakout', 'Base directory to host all required sub-directories')
+flags.DEFINE_string('base_dir', '/tmp/dopamine/a2c/Breakout', 'Base directory to host all required sub-directories')
 flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 # flags.DEFINE_string(
 #     'schedule', 'continuous_train_and_eval',
