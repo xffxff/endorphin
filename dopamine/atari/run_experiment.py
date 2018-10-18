@@ -58,8 +58,8 @@ class Runner(object):
         self.max_steps_per_episode = max_steps_per_episode
 
         self.eval_env = create_atari_environment(game_name, sticky_actions=sticky_actions)
-        # self.train_env = create_multi_environment(self.eval_env, self.n_cpu)
-        self.train_env = VecFrameStack(make_atari_env('BreakoutNoFrameskip-v0', self.n_cpu, seed=123), 4)
+        self.train_env = create_multi_environment(self.eval_env, self.n_cpu)
+        # self.train_env = VecFrameStack(make_atari_env('BreakoutNoFrameskip-v0', self.n_cpu, seed=1), 4)
         self.env = self.train_env
 
         self.agent = create_agent_fn(self.env, self.n_cpu)

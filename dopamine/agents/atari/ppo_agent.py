@@ -177,7 +177,7 @@ class PPOAgent(object):
         obs_buffer, action_buffer, reward_buffer, terminal_buffer = [], [], [], []
         self.log_probs, self.values = [], []
         for _ in range(self.train_interval):
-            obs = obs.transpose(0, 3, 1, 2)
+            # obs = obs.transpose(0, 3, 1, 2)
             obs_buffer.append(obs)
             action = self.select_action(obs)
             obs, reward, terminal, info = env.step(action)
@@ -193,7 +193,8 @@ class PPOAgent(object):
         self.log_probs = np.asarray(self.log_probs, dtype=np.float32)
         self.values = np.asarray(self.values, dtype=np.float32)
 
-        most_recent_obs = torch.tensor(obs.transpose(0, 3, 1, 2), dtype=torch.float32, device=self.torch_device)
+        most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
+        # most_recent_obs = torch.tensor(obs.transpose(0, 3, 1, 2), dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
         most_recent_value = most_recent_value.view(-1).cpu().detach().numpy().squeeze()
 
