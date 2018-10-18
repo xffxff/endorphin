@@ -30,9 +30,9 @@ class PPOAgent(object):
                  num_actions,
                  n_env,
                  gamma=0.99,
-                 train_interval=128,
+                 train_interval=64,
                  epoches=4, 
-                 batch_steps=128,
+                 batch_steps=32,
                  v_loss_coef=0.25,
                  entropy_coef=0.01,
                  torch_device='cpu'):
@@ -69,7 +69,7 @@ class PPOAgent(object):
         action = m.sample()
 
         if not self.eval_mode:
-            self.values.append(value.cpu().detach().numpy())
+            self.values.append(value.cpu().detach().numpy().squeeze())
             self.log_probs.append(m.log_prob(action).cpu().detach().numpy())
             action = action.tolist()
         else:
@@ -107,7 +107,8 @@ class PPOAgent(object):
                     batch_logits, batch_value = self.net(batch_obs)
                     batch_value = batch_value.view(-1)
 
-                    batch_advantage = (batch_discount_reward - batch_value).detach()
+                    batch_advantage = (batch_discount_reward - batch_old_value).detach()
+                    batch_advantage = (batch_advantage - batch_advantage.mean()) / (batch_advantage.std() + 1e-8)
 
                     m = Categorical(logits=batch_logits)
                     entropy = torch.mean(m.entropy())
@@ -165,12 +166,15 @@ class PPOAgent(object):
 
         most_recent_obs = torch.tensor(obs, dtype=torch.float32, device=self.torch_device)
         _, most_recent_value = self.net(most_recent_obs)
-        most_recent_value = most_recent_value.cpu().detach().numpy()
+        most_recent_value = most_recent_value.cpu().detach().numpy().squeeze()
         
         discount_reward_buffer = np.zeros_like(reward_buffer)
-        next_reward = most_recent_value.squeeze()
         for step in reversed(range(self.train_interval)):
-            next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_reward
+            if step == self.train_interval - 1:
+                next_value = most_recent_value
+            else:
+                next_value = self.values[step + 1]
+            next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_value
             discount_reward_buffer[step] = next_reward
 
         obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \

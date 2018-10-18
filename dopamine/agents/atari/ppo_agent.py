@@ -132,7 +132,8 @@ class PPOAgent(object):
                     batch_logits, batch_value = self.net(batch_obs)
                     batch_value = batch_value.view(-1)
 
-                    batch_advantage = (batch_discount_reward - batch_value).detach()
+                    batch_advantage = (batch_discount_reward - batch_old_value).detach()
+                    batch_advantage = (batch_advantage - batch_advantage.mean()) / (batch_advantage.std() + 1e-8)
 
                     m = Categorical(logits=batch_logits)
                     entropy = torch.mean(m.entropy())
@@ -191,8 +192,6 @@ class PPOAgent(object):
         most_recent_value = most_recent_value.view(-1).cpu().detach().numpy().squeeze()
 
         # discount_reward_buffer = self.compute_discount_rewards(reward_buffer, terminal_buffer, self.values, most_recent_value)
-
-        
         
         discount_reward_buffer = np.zeros_like(reward_buffer)
         for step in reversed(range(self.train_interval)):
