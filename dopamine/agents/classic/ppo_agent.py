@@ -98,37 +98,37 @@ class PPOAgent(object):
                     batch_obs, batch_action, batch_discount_reward, batch_old_value, batch_old_log_prob = \
                         (array[batch_ids] for array in (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
 
-                batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device)
-                batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device)
-                batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
-                batch_old_value = torch.tensor(batch_old_value, dtype=torch.float32, device=self.torch_device)
-                batch_old_log_prob = torch.tensor(batch_old_log_prob, dtype=torch.float32, device=self.torch_device)
-            
-                batch_logits, batch_value = self.net(batch_obs)
-                batch_value = batch_value.view(-1)
+                    batch_discount_reward = torch.tensor(batch_discount_reward, dtype=torch.float32, device=self.torch_device)
+                    batch_action = torch.tensor(batch_action, dtype=torch.int32, device=self.torch_device)
+                    batch_obs = torch.tensor(batch_obs, dtype=torch.float32, device=self.torch_device)
+                    batch_old_value = torch.tensor(batch_old_value, dtype=torch.float32, device=self.torch_device)
+                    batch_old_log_prob = torch.tensor(batch_old_log_prob, dtype=torch.float32, device=self.torch_device)
+                
+                    batch_logits, batch_value = self.net(batch_obs)
+                    batch_value = batch_value.view(-1)
 
-                batch_advantage = (batch_discount_reward - batch_value).detach()
+                    batch_advantage = (batch_discount_reward - batch_value).detach()
 
-                m = Categorical(logits=batch_logits)
-                entropy = torch.mean(m.entropy())
-                batch_log_prob = m.log_prob(batch_action)
-                ratio = torch.exp(batch_log_prob - batch_old_log_prob)
-                pg_loss1 = - ratio * batch_advantage
-                pg_loss2 = - batch_advantage * torch.clamp(ratio, 0.8, 1.2)
-                pg_loss = torch.mean(torch.max(pg_loss1, pg_loss2))
+                    m = Categorical(logits=batch_logits)
+                    entropy = torch.mean(m.entropy())
+                    batch_log_prob = m.log_prob(batch_action)
+                    ratio = torch.exp(batch_log_prob - batch_old_log_prob)
+                    pg_loss1 = - ratio * batch_advantage
+                    pg_loss2 = - batch_advantage * torch.clamp(ratio, 0.8, 1.2)
+                    pg_loss = torch.mean(torch.max(pg_loss1, pg_loss2))
 
-                v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_value), 2))
+                    v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_value), 2))
 
-                loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
+                    loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-                if train_steps % 1 == 0:
-                    sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
-                    sys.stdout.flush()
+                    if train_steps % 1 == 0:
+                        sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
+                        sys.stdout.flush()
 
-                self.optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(self.net.parameters(), 0.5)
-                self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(self.net.parameters(), 0.5)
+                    self.optimizer.step()
 
             train_steps += self.n_env * self.train_interval
 
