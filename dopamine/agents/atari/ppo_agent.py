@@ -138,11 +138,11 @@ class PPOAgent(object):
 
                     batch_log_prob = m.log_prob(batch_action)
 
-                    # batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
-                    # v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
-                    # v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
-                    # v_loss = torch.mean(torch.max(v_loss1, v_loss2))
-                    v_loss = torch.mean(torch.pow(batch_discount_reward.detach() - batch_value, 2))
+                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
+                    v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
+                    v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
+                    v_loss = torch.mean(torch.max(v_loss1, v_loss2))
+                    # v_loss = torch.mean(torch.pow(batch_discount_reward.detach() - batch_value, 2))
 
                     ratio = torch.exp(batch_log_prob - batch_old_log_prob)
                     pg_loss1 = - ratio * batch_advantage.detach()
@@ -151,7 +151,8 @@ class PPOAgent(object):
 
                     loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-                    sys.stdout.write(f'steps: {train_steps + self.n_env * self.train_interval} entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
+                    sys.stdout.write(f'steps: {train_steps}  entropy: {entropy:.3f}' \
+                                     f'  pg_loss: {pg_loss:.6f}  v_loss: {v_loss:.6f}  total_loss: {loss:.6f}\r')
                     sys.stdout.flush()
 
                     self.optimizer.zero_grad()
@@ -198,14 +199,16 @@ class PPOAgent(object):
 
         # discount_reward_buffer = self.compute_discount_rewards(reward_buffer, terminal_buffer, self.values, most_recent_value)
         
-        discount_reward_buffer = np.zeros_like(reward_buffer)
+        advantage_buffer = np.zeros_like(reward_buffer)
+        last_gae_lam = 0
         for step in reversed(range(self.train_interval)):
             if step == self.train_interval - 1:
                 next_value = most_recent_value
             else:
                 next_value = self.values[step + 1]  
-            next_reward = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_value
-            discount_reward_buffer[step] = next_reward
+            delta = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_value - self.values[step]
+            advantage_buffer[step] = last_gae_lam = delta + self.gamma * last_gae_lam * (1 - terminal_buffer[step]) * 0.95
+        discount_reward_buffer = advantage_buffer + self.values
 
         obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
             map(self._swap_and_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
