@@ -47,7 +47,7 @@ class PPOAgent(object):
                  train_interval=128, 
                  epoches=4,
                  batch_steps=256,
-                 v_loss_coef=0.5,
+                 v_loss_coef=0.25,
                  entropy_coef=0.01,
                  torch_device='cuda'):
         """Initialize the agent.
@@ -72,8 +72,7 @@ class PPOAgent(object):
 
         self.net = Net(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.Adam(self.net.parameters(), 
-                                             lr=0.00025,
-                                             eps=1e-5)
+                                             lr=0.00025)
 
         self.eval_mode = False
 
@@ -139,14 +138,14 @@ class PPOAgent(object):
 
                     batch_log_prob = m.log_prob(batch_action)
 
-                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.2, 0.2)
+                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
                     v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
                     v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
                     v_loss = torch.mean(torch.max(v_loss1, v_loss2))
 
                     ratio = torch.exp(batch_log_prob - batch_old_log_prob)
                     pg_loss1 = - ratio * batch_advantage
-                    pg_loss2 = - batch_advantage * torch.clamp(ratio, 0.8, 1.2)
+                    pg_loss2 = - batch_advantage * torch.clamp(ratio, 0.9, 1.1)
                     pg_loss = torch.mean(torch.max(pg_loss1, pg_loss2))
 
                     loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy

@@ -5,7 +5,6 @@ import sys
 import time
 
 import gym
-import numpy as np
 
 from dopamine.atari import preprocessing
 from dopamine.common import checkpointer, iteration_statistics, logger
