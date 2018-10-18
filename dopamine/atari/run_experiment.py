@@ -40,7 +40,7 @@ class Runner(object):
                  sticky_actions=True,
                  num_iters=200,
                  train_steps=250000,
-                 eval_steps=10000,
+                 eval_steps=50000,
                  log_every_n=1,
                  log_file_prefix='log',
                  checkpoint_file_prefix='ckpt',
