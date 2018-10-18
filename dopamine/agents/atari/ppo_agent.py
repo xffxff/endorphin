@@ -114,10 +114,10 @@ class PPOAgent(object):
             # obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
                 # map(self._array_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
 
-            ids = np.arange(self.train_interval)
+            ids = np.arange(self.train_interval * self.n_env)
             for epoch in range(self.epoches):
                 np.random.shuffle(ids)
-                for start in range(0, self.train_interval, self.batch_steps):
+                for start in range(0, self.train_interval * self.n_env, self.batch_steps):
                     end = start + self.batch_steps
                     batch_ids = ids[start:end]
                     batch_obs, batch_action, batch_discount_reward, batch_old_value, batch_old_log_prob = \
