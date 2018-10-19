@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 
-class Net(nn.Module):
+class ConvNet(nn.Module):
 
     def __init__(self, num_actions):
         super().__init__()
@@ -44,10 +44,12 @@ class PPOAgent(object):
                  num_actions,
                  n_env, 
                  gamma=0.99,
+                 lam=0.95,
                  train_interval=128, 
                  epoches=4,
                  batch_steps=256,
-                 v_loss_coef=0.25,
+                 clip_range=0.1,
+                 v_loss_coef=0.5,
                  entropy_coef=0.01,
                  torch_device='cuda'):
         """Initialize the agent.
@@ -63,16 +65,19 @@ class PPOAgent(object):
         self.num_actions = num_actions
         self.n_env = n_env
         self.gamma = gamma
+        self.lam = lam
         self.train_interval = train_interval
         self.epoches = epoches
         self.batch_steps = batch_steps
+        self.clip_range = clip_range
         self.v_loss_coef = v_loss_coef
         self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net(num_actions).to(self.torch_device)
+        self.net = ConvNet(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.Adam(self.net.parameters(), 
-                                             lr=0.00025)
+                                             lr=0.00025,
+                                             eps=1e-5)
 
         self.eval_mode = False
 
@@ -110,8 +115,6 @@ class PPOAgent(object):
         obs = env.reset()
         while train_steps < min_steps:
             obs, obs_buffer, action_buffer, discount_reward_buffer = self._collect_experience(env, obs)
-            # obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
-                # map(self._array_flatten, (obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs))
 
             ids = np.arange(self.train_interval * self.n_env)
             for epoch in range(self.epoches):
@@ -138,15 +141,15 @@ class PPOAgent(object):
 
                     batch_log_prob = m.log_prob(batch_action)
 
-                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - 0.1, 0.1)
+                    batch_clipped_value = batch_old_value + torch.clamp(batch_value - batch_old_value, - self.clip_range, self.clip_range)
                     v_loss1 = torch.pow(batch_discount_reward.detach() - batch_value, 2)
                     v_loss2 = torch.pow(batch_discount_reward.detach() - batch_clipped_value, 2)
-                    v_loss = torch.mean(torch.max(v_loss1, v_loss2))
+                    v_loss = 0.5 * torch.mean(torch.max(v_loss1, v_loss2))
                     # v_loss = torch.mean(torch.pow(batch_discount_reward.detach() - batch_value, 2))
 
                     ratio = torch.exp(batch_log_prob - batch_old_log_prob)
                     pg_loss1 = - ratio * batch_advantage.detach()
-                    pg_loss2 = - batch_advantage.detach() * torch.clamp(ratio, 0.9, 1.1)
+                    pg_loss2 = - batch_advantage.detach() * torch.clamp(ratio, 1 - self.clip_range, 1 + self.clip_range)
                     pg_loss = torch.mean(torch.max(pg_loss1, pg_loss2))
 
                     loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
@@ -170,9 +173,9 @@ class PPOAgent(object):
             obs: numpy.ndarray, the most recent observation.
         Returns:
             obs: numpy.ndarray, the new most recent observation.
-            batch_obs: numpy.ndarray, a series of observations.
-            batch_action: numpy.ndarray, a series of actions.
-            batch_discount_reward: numpy.ndarray, a series of rewards.
+            obs_buffer: numpy.ndarray, a series of observations.
+            action_buffer: numpy.ndarray, a series of actions.
+            discount_reward_buffer: numpy.ndarray, a series of rewards.
         """
         obs_buffer, action_buffer, reward_buffer, terminal_buffer = [], [], [], []
         self.log_probs, self.values = [], []
@@ -206,9 +209,10 @@ class PPOAgent(object):
             if step == self.train_interval - 1:
                 next_value = most_recent_value
             else:
-                next_value = self.values[step + 1]  
-            delta = reward_buffer[step] + self.gamma * (1 - terminal_buffer[step]) * next_value - self.values[step]
-            advantage_buffer[step] = last_gae_lam = delta + self.gamma * last_gae_lam * (1 - terminal_buffer[step]) * 0.95
+                next_value = self.values[step + 1] 
+            next_non_terminal = 1 - terminal_buffer[step] 
+            delta = reward_buffer[step] + self.gamma * next_non_terminal * next_value - self.values[step]
+            advantage_buffer[step] = last_gae_lam = delta + self.gamma * last_gae_lam * next_non_terminal * self.lam
         discount_reward_buffer = advantage_buffer + self.values
 
         obs_buffer, action_buffer, discount_reward_buffer, self.values, self.log_probs = \
@@ -219,29 +223,6 @@ class PPOAgent(object):
         """swap the axes flatten the array"""
         shape = array.shape
         return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
-
-    def compute_discount_rewards(self, reward_buffer, terminal_buffer, value_buffer, most_recent_value):
-        """Compute the discount rewards.
-
-        Args:
-            batch_reward: numpy.ndarray, a series of rewards.
-            batch_terminal: numpy.ndarray, a series of terminals.
-            most_recent_value: numpy.ndarray, the value of the most recent observation.
-        
-        Returns:
-            batch_discount_reward: numpy.ndarray, a series of discount rewards.
-        """
-        discount_reward_buffer = np.zeros_like(reward_buffer)
-        for n, (reward, terminal, value) in enumerate(zip(reward_buffer, terminal_buffer, value_buffer, most_recent_value)):
-            discount_reward = []
-            for step, (r, v, t) in enumerate(zip(reward[::-1], value_buffer[::-1], terminal[::-1])):
-                if step == 0:
-                    R = r + self.gamma * value * (1 - t)
-                else:
-                    R = r + self.gamma * v * (1 - t)
-                discount_reward.insert(0, R)
-            discount_reward_buffer[n] = discount_reward
-        return discount_reward_buffer
 
     def bundle_and_checkpoint(self, checkpoint_dir, iteration_number):
         """Returns a self-contained bundle of the agent's state.
