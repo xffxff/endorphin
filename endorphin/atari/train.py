@@ -2,15 +2,14 @@
 from absl import app
 from absl import flags
 
-from dopamine.classic import run_experiment
-from dopamine.agents.classic import a2c_agent
-from dopamine.agents.classic import ppo_agent
+from endorphin.atari import run_experiment
+from endorphin.agents.atari import a2c_agent, ppo_agent
 
-flags.DEFINE_string('agent_name', 'a2c', 'Name of the agent')
-flags.DEFINE_string('base_dir', 'tmp/dopamine/a2c/CartPole', 'Base directory to host all required sub-directories')
-flags.DEFINE_string('game_name', 'CartPole-v0', 'Name of the game')
+flags.DEFINE_string('agent_name', 'ppo', 'Name of the agent')
+flags.DEFINE_string('base_dir', '/tmp/endorphin/a2c/Breakout', 'Base directory to host all required sub-directories')
+flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 # flags.DEFINE_string(
-#     'schedule', 'continuous_train',
+#     'schedule', 'continuous_train_and_eval',
 #     'The schedule with which to run the experiment and choose an appropriate '
 #     'Runner. Supported choices are '
 #     '{continuous_train, continuous_train_and_eval}.')
@@ -21,9 +20,9 @@ FLAGS = flags.FLAGS
 def create_agent(environment, n_env):
     """Select an agent"""
     if FLAGS.agent_name == 'a2c':
-        return a2c_agent.A2CAgent(environment.action_space.n, n_env)
+        return a2c_agent.A2CAgent(environment.action_space.n, n_env=n_env)
     if FLAGS.agent_name == 'ppo':
-        return ppo_agent.PPOAgent(environment.action_space.n, n_env)
+        return ppo_agent.PPOAgent(environment.action_space.n, n_env=n_env)
 
 def create_runner(create_agent_fn):
     """Create an experiment Runner"""
@@ -31,7 +30,6 @@ def create_runner(create_agent_fn):
 
 def launch_experiment(create_runner_fn, create_agent_fn):
     """Launches the experiment."""
-
     runner = create_runner_fn(create_agent_fn)
     runner.run_experiment()
 

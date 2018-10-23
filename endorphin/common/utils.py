@@ -13,7 +13,7 @@
 # limitations under the License.
 """This provides utilities for dealing with Dopamine data.
 
-See: dopamine/common/logger.py .
+See: endorphin/common/logger.py .
 """
 
 import itertools

@@ -7,7 +7,7 @@ import multiprocessing
 import gym
 from stable_baselines.common.vec_env import SubprocVecEnv
 
-from dopamine.common import checkpointer, iteration_statistics, logger
+from endorphin.common import checkpointer, iteration_statistics, logger
 
 
 def create_multi_environment(env, n_cpu):

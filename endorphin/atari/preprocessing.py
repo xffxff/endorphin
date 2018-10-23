@@ -218,44 +218,44 @@ class AtariPreprocessing(object):
   
 class FrameStackPreprocessing(object):
 
-  def __init__(self, environment, frame_stack=4):
-    self.environment = environment
-    self.frame_stack = frame_stack
+    def __init__(self, environment, frame_stack=4):
+        self.environment = environment
+        self.frame_stack = frame_stack
+        
+        self.obs_space = self.environment.observation_space.shape
+        self.state = np.zeros((frame_stack, self.obs_space[1], self.obs_space[2]))
+
+    @property
+    def observation_space(self):
+        # Return the observation space adjusted to match the shape of the processed
+        # observations.
+        return Box(low=0, high=255, shape=(self.frame_stack, self.obs_space[1], self.obs_space[2]),
+                  dtype=np.uint8)
+
+    @property
+    def action_space(self):
+        return self.environment.action_space
+
+    @property
+    def reward_range(self):
+        return self.environment.reward_range
+
+    @property
+    def metadata(self):
+        return self.environment.metadata
+
+    def reset(self):
+        observation = self.environment.reset()
+        self.state[-1] = observation
+        return self.state
+      
+    def step(self, action):
+        observation, reward, game_over, info = self.environment.step(action)
+
+        self.state = np.roll(self.state, shift=-1, axis=0)
+        self.state[-1] = observation
+
+        return self.state, reward, game_over, info  
     
-    self.obs_space = self.environment.observation_space.shape
-    self.state = np.zeros((frame_stack, self.obs_space[1], self.obs_space[2]))
-
-  @property
-  def observation_space(self):
-    # Return the observation space adjusted to match the shape of the processed
-    # observations.
-    return Box(low=0, high=255, shape=(self.frame_stack, self.obs_space[1], self.obs_space[2]),
-               dtype=np.uint8)
-
-  @property
-  def action_space(self):
-    return self.environment.action_space
-
-  @property
-  def reward_range(self):
-    return self.environment.reward_range
-
-  @property
-  def metadata(self):
-    return self.environment.metadata
-
-  def reset(self):
-    observation = self.environment.reset()
-    self.state[-1] = observation
-    return self.state
-  
-  def step(self, action):
-    observation, reward, game_over, info = self.environment.step(action)
-
-    self.state = np.roll(self.state, shift=-1, axis=0)
-    self.state[-1] = observation
-
-    return self.state, reward, game_over, info  
-  
-  def render(self, mode):
-    self.environment.render(mode)
+    def render(self, mode):
+      self.environment.render(mode)
