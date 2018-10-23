@@ -32,8 +32,10 @@ To train a conv network controlling Atari using a2c
 `python -m endorphin.atari.train --agent_name='a2c' --base_dir=/tmp/endorphin/a2c/Breakout --game_name='Breakout'`
 
 ## References
-Marc G. Bellemare, Pablo Samuel Castro, Carles Gelada, Saurabh Kumar, Subhodeep Moitra. Dopamine, https://github.com/google/dopamine, 2018.  
-[Mnih et al. Asynchronous Methods for Deep Reinforcement Learning. ICML 2016](https://arxiv.org/abs/1602.01783)    
+Marc G. Bellemare, Pablo Samuel Castro, Carles Gelada, Saurabh Kumar, Subhodeep Moitra. Dopamine, https://github.com/google/dopamine, 2018. 
+
+[Mnih et al. Asynchronous Methods for Deep Reinforcement Learning. ICML 2016](https://arxiv.org/abs/1602.01783) 
+  
 [Schulman et al. 
 Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
 

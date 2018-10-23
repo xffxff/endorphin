@@ -5,7 +5,7 @@ from endorphin.agents.classic import a2c_agent, ppo_agent
 from endorphin.classic import run_experiment
 
 flags.DEFINE_string('agent_name', 'a2c', 'Name of the agent')
-flags.DEFINE_string('base_dir', 'tmp/endorphin/a2c/CartPole', 'Base directory to host all required sub-directories')
+flags.DEFINE_string('base_dir', '/tmp/endorphin/a2c/CartPole', 'Base directory to host all required sub-directories')
 flags.DEFINE_string('game_name', 'CartPole-v0', 'Name of the game')
 # flags.DEFINE_string(
 #     'schedule', 'continuous_train',
