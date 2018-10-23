@@ -39,6 +39,8 @@ def main(unused_argv):
     Args:
         unused_argv: Arguments (unused).
     """
+    print(f'agent: {FLAGS.agent_name}')
+    print(f'game: {FLAGS.game_name}\n')
     launch_experiment(create_runner, create_agent)
 
 if __name__ == '__main__':

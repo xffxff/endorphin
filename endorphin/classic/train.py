@@ -1,10 +1,8 @@
 
-from absl import app
-from absl import flags
+from absl import app, flags
 
+from endorphin.agents.classic import a2c_agent, ppo_agent
 from endorphin.classic import run_experiment
-from endorphin.agents.classic import a2c_agent
-from endorphin.agents.classic import ppo_agent
 
 flags.DEFINE_string('agent_name', 'a2c', 'Name of the agent')
 flags.DEFINE_string('base_dir', 'tmp/endorphin/a2c/CartPole', 'Base directory to host all required sub-directories')
@@ -41,6 +39,8 @@ def main(unused_argv):
     Args:
         unused_argv: Arguments (unused).
     """
+    print(f'agent: {FLAGS.agent_name}')
+    print(f'game: {FLAGS.game_name}\n')
     launch_experiment(create_runner, create_agent)
 
 if __name__ == '__main__':

@@ -6,22 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-
-
-class Net(nn.Module):
-
-    def __init__(self, num_actions):
-        super(Net, self).__init__()
-        self.fc = nn.Linear(4, 128)
-        self.logits = nn.Linear(128, num_actions)
-        self.value = nn.Linear(128, 1)
-
-    def forward(self, x):
-        x = torch.relu(self.fc(x))
-        logits = self.logits(x)
-        value = self.value(x)
-        return logits, value
-
+from endorphin.net.mlp import MLP
 
 class PPOAgent(object):
     """An implementation of PPO agent"""
@@ -47,7 +32,7 @@ class PPOAgent(object):
         self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net(num_actions)
+        self.net = MLP(num_actions)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
@@ -122,9 +107,9 @@ class PPOAgent(object):
 
                     loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
-                    if train_steps % 1 == 0:
-                        sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
-                        sys.stdout.flush()
+                    sys.stdout.write(f'steps: {train_steps}  entropy: {entropy:.3f}' \
+                                     f'  pg_loss: {pg_loss:.6f}  v_loss: {v_loss:.6f}  total_loss: {loss:.6f}\r')
+                    sys.stdout.flush()
 
                     self.optimizer.zero_grad()
                     loss.backward()

@@ -7,7 +7,7 @@ import time
 import gym
 
 from endorphin.atari import preprocessing
-from endorphin.common import checkpointer, iteration_statistics, logger
+from dopamine.common import checkpointer, iteration_statistics, logger
 
 from stable_baselines.common.vec_env import SubprocVecEnv
 # from stable_baselines.common.cmd_util import make_atari_env
@@ -156,7 +156,7 @@ class Runner(object):
     def _run_one_iteration(self, iteration):
         statistics = iteration_statistics.IterationStatistics()
         print(f'Starting iteration {iteration}')
-        # self._run_train_phase()
+        self._run_train_phase()
         self._run_eval_phase(statistics)
         return statistics.data_lists
 
@@ -176,5 +176,5 @@ class Runner(object):
         print('Beginning training...')
         for iteration in range(self.start_iteration, self.num_iters):
             statistics = self._run_one_iteration(iteration)
-            # self._log_experiment(iteration, statistics)
-            # self._checkpoint_experiment(iteration)
+            self._log_experiment(iteration, statistics)
+            self._checkpoint_experiment(iteration)

@@ -1,24 +1,11 @@
 
 import os
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-
-
-class Net(nn.Module):
-
-    def __init__(self, num_actions):
-        super().__init__()
-        self.fc = nn.Linear(4, 128)
-        self.logits = nn.Linear(128, num_actions)
-        self.value = nn.Linear(128, 1)
-
-    def forward(self, x):
-        x = torch.relu(self.fc(x))
-        logits = self.logits(x)
-        value = self.value(x)
-        return logits, value
+from endorphin.net.mlp import MLP
 
 
 class A2CAgent(object):
@@ -39,7 +26,7 @@ class A2CAgent(object):
         self.entropy_coef = entropy_coef
         self.torch_device = torch_device
 
-        self.net = Net(num_actions).to(self.torch_device)
+        self.net = MLP(num_actions).to(self.torch_device)
         self.optimizer = torch.optim.Adam(self.net.parameters())
 
         self.eval_mode = False
@@ -89,6 +76,10 @@ class A2CAgent(object):
             v_loss = torch.mean(torch.pow((batch_discount_reward.detach() - batch_v), 2))
 
             loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
+
+            sys.stdout.write(f'steps: {train_steps}  entropy: {entropy:.3f}' \
+                             f'  pg_loss: {pg_loss:.6f}  v_loss: {v_loss:.6f}  total_loss: {loss:.6f}\r')
+            sys.stdout.flush()
 
             self.optimizer.zero_grad()
             loss.backward()
