@@ -90,7 +90,7 @@ class A2CAgent(object):
             loss = pg_loss + self.v_loss_coef * v_loss - self.entropy_coef * entropy
 
             if train_steps % 100 == 0:
-                sys.stdout.write(f'entropy: {entropy} pg_loss: {pg_loss} v_loss: {v_loss} total_loss: {loss}\r')
+                sys.stdout.write(f'entropy: {entropy:.3f} pg_loss: {pg_loss:.6f} v_loss: {v_loss:.6f} total_loss: {loss:.6f}\r')
                 sys.stdout.flush()
 
             self.optimizer.zero_grad()

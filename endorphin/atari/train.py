@@ -5,7 +5,7 @@ from absl import flags
 from endorphin.atari import run_experiment
 from endorphin.agents.atari import a2c_agent, ppo_agent
 
-flags.DEFINE_string('agent_name', 'ppo', 'Name of the agent')
+flags.DEFINE_string('agent_name', 'ppo', 'Name of the agent (a2c, ppo)')
 flags.DEFINE_string('base_dir', '/tmp/endorphin/a2c/Breakout', 'Base directory to host all required sub-directories')
 flags.DEFINE_string('game_name', 'Breakout', 'Name of the game')
 # flags.DEFINE_string(

@@ -1,7 +1,7 @@
 # endorphin
 [Dopamine](https://github.com/google/dopamine) is my favorite research framework of reinforcement learning, for
 its very readable code and easy to try out new ideas. This 
-project is mainly inspired by dopamine, and can also be said I am learning code from dopamine.  
+project is mainly inspired by dopamine, and can also be said I am learning coding from dopamine.  
   
 My design princles are:  
 - Flexible development: Make it easy to try out research ideas.  

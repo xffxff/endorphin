@@ -101,7 +101,7 @@ class Runner(object):
         is_terminal = False
 
         while True:
-            self.env.render('human')
+            # self.env.render('human')
             observation, reward, is_terminal = self._run_one_step(action)
             total_reward += reward
             step_num += 1
