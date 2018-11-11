@@ -3,7 +3,7 @@
 its very readable code and easy to try out new ideas. This 
 project is mainly inspired by dopamine, and can also be said I am learning coding from dopamine.  
   
-My design princles are:  
+My design principles are:  
 - Flexible development: Make it easy to try out research ideas.  
 - Concentration: Only focus on policy gradient or actor critic style algorithms.
 
