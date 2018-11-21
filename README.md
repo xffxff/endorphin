@@ -18,6 +18,7 @@ Also inspired by:
 - Python3
 - [PyTorch](https://pytorch.org/)
 - [Openai/Gym](https://gym.openai.com/)
+- [Google/Dopamine](https://github.com/google/dopamine)
 - [Stable-Baselines](https://github.com/hill-a/stable-baselines)
 
 ## Training models
